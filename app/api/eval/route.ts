@@ -260,9 +260,6 @@ export async function POST(request: Request) {
   }
 
   const openaiKey = process.env.OPENAI_API_KEY;
-  const awsAccessKeyId = process.env.AWS_ACCESS_KEY_ID;
-  const awsSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-  const awsSessionToken = process.env.AWS_SESSION_TOKEN;
   const bedrockRegion = process.env.BEDROCK_REGION ?? "us-east-1";
   const geminiKey = process.env.GOOGLE_API_KEY;
 
@@ -331,12 +328,10 @@ export async function POST(request: Request) {
           },
           error: new Error("Missing Gemini API key")
         }),
-    awsAccessKeyId && awsSecretAccessKey
+    bedrockRegion
       ? runWithRetry({
           run: (note) =>
             callAnthropic({
-              accessKeyId: awsAccessKeyId,
-              secretAccessKey: awsSecretAccessKey,
               model: bedrockModel,
               systemPrompt,
               userPrompt: buildUserPrompt({
@@ -349,8 +344,7 @@ export async function POST(request: Request) {
                 targetConfidence: input.targetConfidence,
                 retryNote: note
               }),
-              region: bedrockRegion,
-              sessionToken: awsSessionToken
+              region: bedrockRegion
             }),
           parser: parseModelResult,
           retryNote
@@ -358,9 +352,9 @@ export async function POST(request: Request) {
       : Promise.resolve({
           result: {
             ...FALLBACK_RESULT,
-            reasoning_summary: "Bedrock(AWS)の認証情報が設定されていません。"
+            reasoning_summary: "Bedrockリージョンが設定されていません。"
           },
-          error: new Error("Missing Bedrock AWS credentials")
+          error: new Error("Missing Bedrock region")
         })
   ]);
 

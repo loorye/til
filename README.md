@@ -27,7 +27,7 @@ npm run dev
 
 ## APIキー設定方法
 
-`.env` に以下を設定してください（ClaudeはAWS Bedrock経由）。
+`.env` に以下を設定してください（ClaudeはAWS Bedrock経由、AWS SDKの認証情報プロバイダチェーンを利用）。
 
 ```bash
 OPENAI_API_KEY=your_openai_key
