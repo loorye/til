@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { CASE_MAP } from "@/lib/cases";
-import { PRINCIPLES, PRINCIPLE_MAP } from "@/lib/principles";
+import { PRINCIPLES, PRINCIPLE_MAP, type PrincipleId } from "@/lib/principles";
 import {
   ApiResponseSchema,
   InputSchema,
@@ -89,7 +89,7 @@ function buildUserPrompt({
     (item) => `- ${item.label}: ${item.description} (id: ${item.id})`
   ).join("\n");
 
-  const selected = PRINCIPLE_MAP.get(principleId);
+  const selected = PRINCIPLE_MAP.get(principleId as PrincipleId);
   const ifArray = JSON.stringify(ifConditions ?? []);
 
   return [
