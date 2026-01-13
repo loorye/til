@@ -145,7 +145,7 @@ function makeMockResult({
   ifConditions: string[];
   targetConfidence: number;
 }): ModelResult {
-  const baseDecisionMap: Record<string, { A: string; B: string }> = {
+  const baseDecisionMap: Record<string, { A: "A"; B: "B" }> = {
     trolley: { A: "A", B: "B" },
     theseus: { A: "A", B: "B" }
   };
