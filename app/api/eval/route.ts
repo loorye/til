@@ -62,7 +62,8 @@ function buildSystemPrompt() {
     "確信度は正解率ではなく、その選択の妥当性に対する迷いの少なさ。",
     "出力は必ず指定JSONのみ。余計な文章は禁止。",
     "日本語で簡潔に。reasoning_summaryは1文、key_assumptionsは最大3つ。",
-    "if条件が無い場合は what_changed_by_if を『初回』とする。"
+    "if条件が無い場合は what_changed_by_if を『初回』とする。",
+    "if条件がある場合は、what_changed_by_if にif条件で変わった判断点を短く書く。"
   ].join("\n");
 }
 
@@ -101,6 +102,9 @@ function buildUserPrompt({
     principleLines,
     `選択した判断原理: ${selected?.label ?? principleId}`,
     `if条件(配列): ${ifArray}`,
+    ifConditions.length
+      ? "if条件があるため、what_changed_by_ifに変化点を簡潔に記載すること。"
+      : "if条件が無いため、what_changed_by_ifは『初回』とすること。",
     `目標確信度: ${targetConfidence}`,
     "出力JSONの形式は以下。余計な文は不要:",
     JSON.stringify({
@@ -172,9 +176,13 @@ function makeMockResult({
     key_assumptions: ifConditions.length
       ? ifConditions.slice(0, 3)
       : ["前提条件は特になし"],
-    reasoning_summary: `${principleId}の観点から${baseDecision}を選ぶ。`,
+    reasoning_summary: ifConditions.length
+      ? `${principleId}の観点でif条件を反映し${baseDecision}を選ぶ。`
+      : `${principleId}の観点から${baseDecision}を選ぶ。`,
     what_changed_by_if:
-      ifConditions.length === 0 ? "初回" : "if条件により前提を調整"
+      ifConditions.length === 0
+        ? "初回"
+        : `if条件を考慮: ${ifConditions.join(" / ")}`
   };
 }
 
