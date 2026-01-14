@@ -151,6 +151,7 @@ function makeMockResult({
   };
 
   const decisionByPrinciple: Record<string, "A" | "B"> = {
+    none: caseId === "trolley" ? "A" : "A",
     utilitarian: "A",
     deontology: "B",
     care: "A",

@@ -1,4 +1,5 @@
 export type PrincipleId =
+  | "none"
   | "utilitarian"
   | "deontology"
   | "care"
@@ -13,6 +14,11 @@ export type Principle = {
 };
 
 export const PRINCIPLES: Principle[] = [
+  {
+    id: "none",
+    label: "なし（AIデフォルト）",
+    description: "モデルの標準的な判断に任せる"
+  },
   {
     id: "utilitarian",
     label: "功利主義（期待値最大化）",
