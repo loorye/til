@@ -118,7 +118,7 @@ function ResultCard({
         <CardTitle className="flex items-center justify-between">
           <span>{title}</span>
           <span className="text-sm font-medium text-muted-foreground">
-            decision: {result?.decision ?? "-"}
+            判断
           </span>
         </CardTitle>
         <CardDescription>
@@ -128,11 +128,14 @@ function ResultCard({
       <CardContent className="space-y-4">
         {result ? (
           <>
-            <div className="flex justify-center">
+            <div className="flex flex-col items-center gap-2">
+              <div className="rounded-full bg-slate-100 px-6 py-2 text-3xl font-bold text-slate-900 shadow-sm">
+                {result.decision}
+              </div>
               <ConfidenceChart value={result.confidence} color={color} />
             </div>
             <div>
-              <p className="text-sm font-semibold">key_assumptions</p>
+              <p className="text-sm font-semibold">前提条件（最大3つ）</p>
               <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-muted-foreground">
                 {result.key_assumptions.length ? (
                   result.key_assumptions.map((item, index) => (
@@ -144,13 +147,13 @@ function ResultCard({
               </ul>
             </div>
             <div>
-              <p className="text-sm font-semibold">reasoning_summary</p>
+              <p className="text-sm font-semibold">判断の要約</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {result.reasoning_summary}
               </p>
             </div>
             <div>
-              <p className="text-sm font-semibold">what_changed_by_if</p>
+              <p className="text-sm font-semibold">if条件による変化</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {result.what_changed_by_if}
               </p>
@@ -460,11 +463,11 @@ export default function HomePage() {
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-100 text-left">
                   <tr>
-                    <th className="px-3 py-2">timestamp</th>
-                    <th className="px-3 py-2">case</th>
-                    <th className="px-3 py-2">principle</th>
-                    <th className="px-3 py-2">if</th>
-                    <th className="px-3 py-2">results</th>
+                    <th className="px-3 py-2">実行時刻</th>
+                    <th className="px-3 py-2">ケース</th>
+                    <th className="px-3 py-2">判断原理</th>
+                    <th className="px-3 py-2">if条件</th>
+                    <th className="px-3 py-2">結果</th>
                   </tr>
                 </thead>
                 <tbody>
