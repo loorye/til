@@ -227,6 +227,14 @@ export async function POST(request: Request) {
     targetConfidence: input.targetConfidence
   });
 
+  console.log("[eval] request", {
+    input,
+    prompts: {
+      system: systemPrompt,
+      user: userPrompt
+    }
+  });
+
   const mockMode = process.env.MOCK_MODE === "true";
 
   if (mockMode) {
@@ -368,6 +376,15 @@ export async function POST(request: Request) {
   if (claudeResult.error) {
     errors.claude = claudeResult.error.message;
   }
+
+  console.log("[eval] response", {
+    results: {
+      gpt: gptResult.result,
+      gemini: geminiResult.result,
+      claude: claudeResult.result
+    },
+    errors: Object.keys(errors).length ? errors : undefined
+  });
 
   const responseBody = {
     inputEcho: input,
