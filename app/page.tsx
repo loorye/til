@@ -346,9 +346,9 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 px-6 py-8 text-slate-900">
+    <div className="min-h-screen bg-white px-6 py-10 text-slate-900">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <header className="flex flex-col gap-4 rounded-xl border border-border bg-white p-6 shadow-sm">
+        <header className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-semibold">
@@ -363,8 +363,8 @@ export default function HomePage() {
                 className={cn(
                   "rounded-full border px-3 py-1 text-xs font-semibold",
                   MOCK_MODE
-                    ? "border-amber-300 bg-amber-50 text-amber-700"
-                    : "border-emerald-300 bg-emerald-50 text-emerald-700"
+                    ? "border-amber-200 bg-amber-100/60 text-amber-700"
+                    : "border-emerald-200 bg-emerald-100/60 text-emerald-700"
                 )}
               >
                 {MOCK_MODE ? "MOCK_MODE" : "LIVE_MODE"}
@@ -381,9 +381,9 @@ export default function HomePage() {
           ) : null}
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[1.2fr_1.8fr]">
-          <Card>
-            <CardHeader>
+        <div className="grid gap-6 lg:grid-cols-[1.1fr_1.9fr]">
+          <Card className="border-slate-200 shadow-none">
+            <CardHeader className="border-b border-slate-200">
               <CardTitle>入力フォーム</CardTitle>
               <CardDescription>判断原理とif条件を設定</CardDescription>
             </CardHeader>
@@ -396,10 +396,10 @@ export default function HomePage() {
                       key={item.id}
                       onClick={() => setCaseId(item.id)}
                       className={cn(
-                        "rounded-lg border px-4 py-2 text-left text-sm",
+                        "rounded-lg border px-4 py-2 text-left text-sm transition-colors",
                         caseId === item.id
-                          ? "border-primary bg-primary/10"
-                          : "border-border"
+                          ? "border-slate-900 bg-slate-900 text-white"
+                          : "border-slate-200 bg-white hover:border-slate-300"
                       )}
                       type="button"
                     >
@@ -408,8 +408,8 @@ export default function HomePage() {
                   ))}
                 </div>
                 <Button
-                  variant="secondary"
-                  className="mt-2 w-full"
+                  variant="outline"
+                  className="mt-2 w-full border-slate-200"
                   type="button"
                   onClick={generateRandomScenario}
                   disabled={randomLoading}
@@ -418,13 +418,16 @@ export default function HomePage() {
                 </Button>
               </div>
 
-              <div className="space-y-2">
-                <Label>シナリオ本文（編集可）</Label>
-                <Textarea
-                  value={scenarioText}
-                  onChange={(event) => setScenarioText(event.target.value)}
-                />
-                <div className="grid gap-2 text-sm text-muted-foreground">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>シナリオ本文（編集可）</Label>
+                  <Textarea
+                    value={scenarioText}
+                    onChange={(event) => setScenarioText(event.target.value)}
+                    className="min-h-[140px]"
+                  />
+                </div>
+                <div className="grid gap-3 text-sm text-muted-foreground md:grid-cols-2">
                   <div className="space-y-1">
                     <Label className="text-xs">選択肢A</Label>
                     <Input
@@ -505,7 +508,8 @@ export default function HomePage() {
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">結果比較</h2>
               <Button
-                variant="secondary"
+                variant="outline"
+                className="border-slate-200"
                 onClick={runEvaluation}
                 disabled={loading}
               >
@@ -535,8 +539,8 @@ export default function HomePage() {
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
+        <Card className="border-slate-200 shadow-none">
+          <CardHeader className="border-b border-slate-200">
             <CardTitle>履歴</CardTitle>
             <CardDescription>最新の実行結果が上に表示されます</CardDescription>
           </CardHeader>
@@ -544,6 +548,7 @@ export default function HomePage() {
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
+                className="border-slate-200"
                 onClick={() => setHistory([])}
                 disabled={history.length === 0}
               >
@@ -551,6 +556,7 @@ export default function HomePage() {
               </Button>
               <Button
                 variant="outline"
+                className="border-slate-200"
                 onClick={exportHistory}
                 disabled={history.length === 0}
               >
@@ -559,7 +565,7 @@ export default function HomePage() {
             </div>
             <div className="overflow-x-auto rounded-lg border">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-100 text-left">
+                <thead className="bg-slate-50 text-left">
                   <tr>
                     <th className="px-3 py-2">実行時刻</th>
                     <th className="px-3 py-2">ケース</th>
