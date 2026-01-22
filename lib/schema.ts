@@ -4,7 +4,10 @@ export const InputSchema = z.object({
   caseId: z.enum(["trolley", "theseus"]),
   principleId: z.string(),
   ifConditions: z.array(z.string().min(1)).max(2),
-  targetConfidence: z.number().int().min(51).max(100)
+  targetConfidence: z.number().int().min(51).max(100),
+  scenarioText: z.string().min(1),
+  optionA: z.string().min(1),
+  optionB: z.string().min(1)
 });
 
 export const ModelResultSchema = z.object({

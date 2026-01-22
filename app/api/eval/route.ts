@@ -227,9 +227,9 @@ export async function POST(request: Request) {
 
   const userPrompt = buildUserPrompt({
     caseTitle: selectedCase.title,
-    scenarioText: selectedCase.scenarioText,
-    optionA: selectedCase.optionA,
-    optionB: selectedCase.optionB,
+    scenarioText: input.scenarioText,
+    optionA: input.optionA,
+    optionB: input.optionB,
     principleId: input.principleId,
     ifConditions: input.ifConditions,
     targetConfidence: input.targetConfidence
@@ -297,9 +297,9 @@ export async function POST(request: Request) {
               systemPrompt,
               userPrompt: buildUserPrompt({
                 caseTitle: selectedCase.title,
-                scenarioText: selectedCase.scenarioText,
-                optionA: selectedCase.optionA,
-                optionB: selectedCase.optionB,
+                scenarioText: input.scenarioText,
+                optionA: input.optionA,
+                optionB: input.optionB,
                 principleId: input.principleId,
                 ifConditions: input.ifConditions,
                 targetConfidence: input.targetConfidence,
@@ -326,9 +326,9 @@ export async function POST(request: Request) {
               systemPrompt,
               userPrompt: buildUserPrompt({
                 caseTitle: selectedCase.title,
-                scenarioText: selectedCase.scenarioText,
-                optionA: selectedCase.optionA,
-                optionB: selectedCase.optionB,
+                scenarioText: input.scenarioText,
+                optionA: input.optionA,
+                optionB: input.optionB,
                 principleId: input.principleId,
                 ifConditions: input.ifConditions,
                 targetConfidence: input.targetConfidence,
@@ -353,9 +353,9 @@ export async function POST(request: Request) {
               systemPrompt,
               userPrompt: buildUserPrompt({
                 caseTitle: selectedCase.title,
-                scenarioText: selectedCase.scenarioText,
-                optionA: selectedCase.optionA,
-                optionB: selectedCase.optionB,
+                scenarioText: input.scenarioText,
+                optionA: input.optionA,
+                optionB: input.optionB,
                 principleId: input.principleId,
                 ifConditions: input.ifConditions,
                 targetConfidence: input.targetConfidence,
