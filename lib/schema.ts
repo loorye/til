@@ -18,6 +18,12 @@ export const ModelResultSchema = z.object({
   what_changed_by_if: z.string().min(1)
 });
 
+export const ScenarioSchema = z.object({
+  scenarioText: z.string().min(1),
+  optionA: z.string().min(1),
+  optionB: z.string().min(1)
+});
+
 export const ApiResponseSchema = z.object({
   inputEcho: InputSchema,
   results: z.object({
@@ -31,3 +37,4 @@ export const ApiResponseSchema = z.object({
 export type InputPayload = z.infer<typeof InputSchema>;
 export type ModelResult = z.infer<typeof ModelResultSchema>;
 export type ApiResponse = z.infer<typeof ApiResponseSchema>;
+export type ScenarioPayload = z.infer<typeof ScenarioSchema>;

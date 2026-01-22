@@ -11,7 +11,7 @@ import {
 
 import { CASES, CASE_MAP, CaseId } from "@/lib/cases";
 import { PRINCIPLES, PrincipleId } from "@/lib/principles";
-import { ApiResponse, ModelResult } from "@/lib/schema";
+import { ApiResponse, ModelResult, ScenarioPayload } from "@/lib/schema";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -223,6 +223,7 @@ export default function HomePage() {
   const [results, setResults] = useState<ApiResponse["results"] | null>(null);
   const [errors, setErrors] = useState<Record<string, string> | null>(null);
   const [loading, setLoading] = useState(false);
+  const [randomLoading, setRandomLoading] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   const selectedCase = CASE_MAP.get(caseId) ?? CASES[0];
@@ -311,11 +312,25 @@ export default function HomePage() {
     setResults(entry.results);
   };
 
-  const generateRandomScenario = () => {
-    const random = buildRandomScenario();
-    setScenarioText(random.scenarioText);
-    setOptionA(random.optionA);
-    setOptionB(random.optionB);
+  const generateRandomScenario = async () => {
+    setRandomLoading(true);
+    try {
+      const response = await fetch("/api/generate", { method: "POST" });
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      const data = (await response.json()) as ScenarioPayload;
+      setScenarioText(data.scenarioText);
+      setOptionA(data.optionA);
+      setOptionB(data.optionB);
+    } catch {
+      const random = buildRandomScenario();
+      setScenarioText(random.scenarioText);
+      setOptionA(random.optionA);
+      setOptionB(random.optionB);
+    } finally {
+      setRandomLoading(false);
+    }
   };
 
   const exportHistory = () => {
@@ -397,8 +412,9 @@ export default function HomePage() {
                   className="mt-2 w-full"
                   type="button"
                   onClick={generateRandomScenario}
+                  disabled={randomLoading}
                 >
-                  ランダム生成（思考実験）
+                  {randomLoading ? "生成中..." : "ランダム生成（思考実験）"}
                 </Button>
               </div>
 
