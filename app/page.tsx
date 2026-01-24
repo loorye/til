@@ -24,7 +24,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Accordion,
@@ -62,39 +61,6 @@ const chartColors = {
   claude: "#9333ea"
 };
 
-const RANDOM_SUBJECTS = [
-  "自動運転車",
-  "AI医療システム",
-  "避難誘導ドローン",
-  "学校の評価AI",
-  "災害時の配給AI"
-];
-const RANDOM_CONFLICTS = [
-  "少数を犠牲に多数を救う",
-  "年長者と年少者の優先",
-  "近い友人と見知らぬ人の救助",
-  "短期の利益と長期のリスク",
-  "公平性と即時の成果"
-];
-const RANDOM_CONTEXTS = [
-  "緊急性が非常に高い",
-  "情報が不完全",
-  "透明性が求められる",
-  "責任の所在が不明確",
-  "社会的合意が分かれている"
-];
-
-function buildRandomScenario() {
-  const subject = RANDOM_SUBJECTS[Math.floor(Math.random() * RANDOM_SUBJECTS.length)];
-  const conflict = RANDOM_CONFLICTS[Math.floor(Math.random() * RANDOM_CONFLICTS.length)];
-  const context = RANDOM_CONTEXTS[Math.floor(Math.random() * RANDOM_CONTEXTS.length)];
-
-  return {
-    scenarioText: `${subject}が判断を迫られている。状況は「${conflict}」で、${context}。あなたはどちらを選ぶべきか？`,
-    optionA: "A: 直接的な被害を最小化する選択",
-    optionB: "B: 長期的な信頼を優先する選択"
-  };
-}
 
 function ConfidenceChart({
   value,
@@ -216,7 +182,7 @@ export default function HomePage() {
   );
   const [ifPrimary, setIfPrimary] = useState("");
   const [ifSecondary, setIfSecondary] = useState("");
-  const [targetConfidence, setTargetConfidence] = useState(80);
+  const targetConfidence = 80;
   const [scenarioText, setScenarioText] = useState(CASES[0].scenarioText);
   const [optionA, setOptionA] = useState(CASES[0].optionA);
   const [optionB, setOptionB] = useState(CASES[0].optionB);
@@ -305,7 +271,6 @@ export default function HomePage() {
     setPrincipleId(entry.input.principleId);
     setIfPrimary(entry.input.ifConditions[0] ?? "");
     setIfSecondary(entry.input.ifConditions[1] ?? "");
-    setTargetConfidence(entry.input.targetConfidence);
     setScenarioText(entry.input.scenarioText);
     setOptionA(entry.input.optionA);
     setOptionB(entry.input.optionB);
@@ -323,11 +288,8 @@ export default function HomePage() {
       setScenarioText(data.scenarioText);
       setOptionA(data.optionA);
       setOptionB(data.optionB);
-    } catch {
-      const random = buildRandomScenario();
-      setScenarioText(random.scenarioText);
-      setOptionA(random.optionA);
-      setOptionB(random.optionB);
+    } catch (error) {
+      setErrors({ global: (error as Error).message });
     } finally {
       setRandomLoading(false);
     }
@@ -486,21 +448,6 @@ export default function HomePage() {
                 </Accordion>
               </div>
 
-              <div className="space-y-3">
-                <Label>目標確信度: {targetConfidence}</Label>
-                <Slider
-                  min={51}
-                  max={100}
-                  step={1}
-                  value={[targetConfidence]}
-                  onValueChange={(value) => setTargetConfidence(value[0] ?? 80)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>出力言語</Label>
-                <Input value="日本語" readOnly />
-              </div>
             </CardContent>
           </Card>
 
