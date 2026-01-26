@@ -7,14 +7,12 @@ const DEFAULT_SCENARIOS = [
   {
     scenarioText:
       "救助ドローンが2人の要救助者のどちらか一方だけを救える。Aは高齢者でBは若者。時間は限られている。",
-    optionA: "高齢者を優先する",
-    optionB: "若者を優先する"
+    options: ["高齢者を優先する", "若者を優先する"]
   },
   {
     scenarioText:
       "災害時の物資配給をAIが決定する。Aは公平に全員へ少量配る、Bは生存率が高い地域に集中配給する。",
-    optionA: "公平に配る",
-    optionB: "生存率重視で配る"
+    options: ["公平に配る", "生存率重視で配る"]
   }
 ];
 
@@ -23,7 +21,7 @@ function buildSystemPrompt() {
     "あなたは二択の思考実験を日本語で生成する。",
     "出力は必ず指定JSONのみ。余計な文章は禁止。",
     "scenarioTextは1〜2文で簡潔に。",
-    "optionA/optionBは短いフレーズ。",
+    "optionsは短いフレーズの配列。",
     "A/Bのラベルは含めない。"
   ].join("\n");
 }
@@ -35,8 +33,7 @@ function buildUserPrompt() {
     "出力JSONの形式:",
     JSON.stringify({
       scenarioText: "例: ...",
-      optionA: "例: ...",
-      optionB: "例: ..."
+      options: ["例: ...", "例: ..."]
     })
   ].join("\n");
 }

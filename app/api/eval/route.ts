@@ -25,7 +25,7 @@ const MODEL_RESULT_JSON_SCHEMA = {
   properties: {
     decision: {
       type: "string",
-      enum: ["A", "B"]
+      enum: ["A", "B", "C", "D"]
     },
     confidence: {
       type: "integer",
@@ -66,7 +66,7 @@ const DISABLED_RESULT: ModelResult = {
 
 function buildSystemPrompt() {
   return [
-    "あなたは思考実験に対して二択(A/B)を選び、確信度(51-100整数)を返す。",
+    "あなたは思考実験に対して二択〜四択(A〜D)を選び、確信度(51-100整数)を返す。",
     "確信度は正解率ではなく、その選択の妥当性に対する迷いの少なさ。",
     "出力は必ず指定JSONのみ。余計な文章は禁止。",
     "日本語で簡潔に。reasoning_summaryは1文、key_assumptionsは最大3つ。",
@@ -78,8 +78,7 @@ function buildSystemPrompt() {
 function buildUserPrompt({
   caseTitle,
   scenarioText,
-  optionA,
-  optionB,
+  options,
   principleId,
   ifConditions,
   targetConfidence,
@@ -87,8 +86,7 @@ function buildUserPrompt({
 }: {
   caseTitle: string;
   scenarioText: string;
-  optionA: string;
-  optionB: string;
+  options: string[];
   principleId: string;
   ifConditions: string[];
   targetConfidence: number;
@@ -101,11 +99,14 @@ function buildUserPrompt({
   const selected = PRINCIPLE_MAP.get(principleId as PrincipleId);
   const ifArray = JSON.stringify(ifConditions ?? []);
 
+  const optionLines = options
+    .map((option, index) => `選択肢${String.fromCharCode(65 + index)}: ${option}`)
+    .join("\n");
+
   return [
     `ケース名: ${caseTitle}`,
     `シナリオ: ${scenarioText}`,
-    `選択肢A: ${optionA}`,
-    `選択肢B: ${optionB}`,
+    optionLines,
     "判断原理一覧:",
     principleLines,
     `選択した判断原理: ${selected?.label ?? principleId}`,
@@ -157,11 +158,6 @@ function makeMockResult({
   ifConditions: string[];
   targetConfidence: number;
 }): ModelResult {
-  const baseDecisionMap: Record<string, { A: "A"; B: "B" }> = {
-    trolley: { A: "A", B: "B" },
-    theseus: { A: "A", B: "B" }
-  };
-
   const decisionByPrinciple: Record<string, "A" | "B"> = {
     none: caseId === "trolley" ? "A" : "A",
     utilitarian: "A",
@@ -179,7 +175,7 @@ function makeMockResult({
   const confidence = clampConfidence(targetConfidence + bias + careBias + ifBoost);
 
   return {
-    decision: baseDecisionMap[caseId]?.[baseDecision] ?? "A",
+    decision: baseDecision,
     confidence,
     key_assumptions: ifConditions.length
       ? ifConditions.slice(0, 3)
@@ -236,8 +232,7 @@ export async function POST(request: Request) {
   const userPrompt = buildUserPrompt({
     caseTitle: selectedCase.title,
     scenarioText: input.scenarioText,
-    optionA: input.optionA,
-    optionB: input.optionB,
+    options: input.options,
     principleId: input.principleId,
     ifConditions: input.ifConditions,
     targetConfidence: input.targetConfidence
@@ -313,8 +308,7 @@ export async function POST(request: Request) {
               userPrompt: buildUserPrompt({
                 caseTitle: selectedCase.title,
                 scenarioText: input.scenarioText,
-                optionA: input.optionA,
-                optionB: input.optionB,
+                options: input.options,
                 principleId: input.principleId,
                 ifConditions: input.ifConditions,
                 targetConfidence: input.targetConfidence,
@@ -349,8 +343,7 @@ export async function POST(request: Request) {
               userPrompt: buildUserPrompt({
                 caseTitle: selectedCase.title,
                 scenarioText: input.scenarioText,
-                optionA: input.optionA,
-                optionB: input.optionB,
+                options: input.options,
                 principleId: input.principleId,
                 ifConditions: input.ifConditions,
                 targetConfidence: input.targetConfidence,
@@ -383,8 +376,7 @@ export async function POST(request: Request) {
               userPrompt: buildUserPrompt({
                 caseTitle: selectedCase.title,
                 scenarioText: input.scenarioText,
-                optionA: input.optionA,
-                optionB: input.optionB,
+                options: input.options,
                 principleId: input.principleId,
                 ifConditions: input.ifConditions,
                 targetConfidence: input.targetConfidence,
