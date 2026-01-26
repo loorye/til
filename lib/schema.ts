@@ -4,6 +4,7 @@ export const InputSchema = z.object({
   caseId: z.enum(["trolley", "theseus"]),
   principleId: z.string(),
   ifConditions: z.array(z.string().min(1)).max(2),
+  enabledModels: z.array(z.enum(["gpt", "gemini", "claude"])).min(1),
   targetConfidence: z.number().int().min(51).max(100),
   scenarioText: z.string().min(1),
   optionA: z.string().min(1),

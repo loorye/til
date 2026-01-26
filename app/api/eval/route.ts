@@ -56,6 +56,14 @@ const FALLBACK_RESULT: ModelResult = {
   what_changed_by_if: "初回"
 };
 
+const DISABLED_RESULT: ModelResult = {
+  decision: "A",
+  confidence: 51,
+  key_assumptions: [],
+  reasoning_summary: "無効化されています。",
+  what_changed_by_if: "無効"
+};
+
 function buildSystemPrompt() {
   return [
     "あなたは思考実験に対して二択(A/B)を選び、確信度(51-100整数)を返す。",
@@ -244,32 +252,39 @@ export async function POST(request: Request) {
   });
 
   const mockMode = process.env.MOCK_MODE === "true";
+  const enabledModels = new Set(input.enabledModels);
 
   if (mockMode) {
     const responseBody = {
       inputEcho: input,
       results: {
-        gpt: makeMockResult({
-          model: "gpt",
-          caseId: input.caseId,
-          principleId: input.principleId,
-          ifConditions: input.ifConditions,
-          targetConfidence: input.targetConfidence
-        }),
-        gemini: makeMockResult({
-          model: "gemini",
-          caseId: input.caseId,
-          principleId: input.principleId,
-          ifConditions: input.ifConditions,
-          targetConfidence: input.targetConfidence
-        }),
-        claude: makeMockResult({
-          model: "claude",
-          caseId: input.caseId,
-          principleId: input.principleId,
-          ifConditions: input.ifConditions,
-          targetConfidence: input.targetConfidence
-        })
+        gpt: enabledModels.has("gpt")
+          ? makeMockResult({
+              model: "gpt",
+              caseId: input.caseId,
+              principleId: input.principleId,
+              ifConditions: input.ifConditions,
+              targetConfidence: input.targetConfidence
+            })
+          : DISABLED_RESULT,
+        gemini: enabledModels.has("gemini")
+          ? makeMockResult({
+              model: "gemini",
+              caseId: input.caseId,
+              principleId: input.principleId,
+              ifConditions: input.ifConditions,
+              targetConfidence: input.targetConfidence
+            })
+          : DISABLED_RESULT,
+        claude: enabledModels.has("claude")
+          ? makeMockResult({
+              model: "claude",
+              caseId: input.caseId,
+              principleId: input.principleId,
+              ifConditions: input.ifConditions,
+              targetConfidence: input.targetConfidence
+            })
+          : DISABLED_RESULT
       }
     };
 
@@ -288,7 +303,7 @@ export async function POST(request: Request) {
   const errors: Record<string, string> = {};
 
   const [gptResult, geminiResult, claudeResult] = await Promise.all([
-    openaiKey
+    enabledModels.has("gpt") && openaiKey
       ? runWithRetry({
           run: (note) =>
             callOpenAI({
@@ -313,11 +328,18 @@ export async function POST(request: Request) {
       : Promise.resolve({
           result: {
             ...FALLBACK_RESULT,
-            reasoning_summary: "OpenAI APIキーが設定されていません。"
+            reasoning_summary: enabledModels.has("gpt")
+              ? "OpenAI APIキーが設定されていません。"
+              : DISABLED_RESULT.reasoning_summary,
+            what_changed_by_if: enabledModels.has("gpt")
+              ? FALLBACK_RESULT.what_changed_by_if
+              : DISABLED_RESULT.what_changed_by_if
           },
-          error: new Error("Missing OpenAI API key")
+          error: enabledModels.has("gpt")
+            ? new Error("Missing OpenAI API key")
+            : null
         }),
-    geminiKey
+    enabledModels.has("gemini") && geminiKey
       ? runWithRetry({
           run: (note) =>
             callGemini({
@@ -341,11 +363,18 @@ export async function POST(request: Request) {
       : Promise.resolve({
           result: {
             ...FALLBACK_RESULT,
-            reasoning_summary: "Gemini APIキーが設定されていません。"
+            reasoning_summary: enabledModels.has("gemini")
+              ? "Gemini APIキーが設定されていません。"
+              : DISABLED_RESULT.reasoning_summary,
+            what_changed_by_if: enabledModels.has("gemini")
+              ? FALLBACK_RESULT.what_changed_by_if
+              : DISABLED_RESULT.what_changed_by_if
           },
-          error: new Error("Missing Gemini API key")
+          error: enabledModels.has("gemini")
+            ? new Error("Missing Gemini API key")
+            : null
         }),
-    bedrockRegion
+    enabledModels.has("claude") && bedrockRegion
       ? runWithRetry({
           run: (note) =>
             callAnthropic({
@@ -369,9 +398,16 @@ export async function POST(request: Request) {
       : Promise.resolve({
           result: {
             ...FALLBACK_RESULT,
-            reasoning_summary: "Bedrockリージョンが設定されていません。"
+            reasoning_summary: enabledModels.has("claude")
+              ? "Bedrockリージョンが設定されていません。"
+              : DISABLED_RESULT.reasoning_summary,
+            what_changed_by_if: enabledModels.has("claude")
+              ? FALLBACK_RESULT.what_changed_by_if
+              : DISABLED_RESULT.what_changed_by_if
           },
-          error: new Error("Missing Bedrock region")
+          error: enabledModels.has("claude")
+            ? new Error("Missing Bedrock region")
+            : null
         })
   ]);
 

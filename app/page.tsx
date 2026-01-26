@@ -41,6 +41,7 @@ type HistoryEntry = {
     caseId: CaseId;
     principleId: PrincipleId;
     ifConditions: string[];
+    enabledModels: Array<"gpt" | "gemini" | "claude">;
     targetConfidence: number;
     scenarioText: string;
     optionA: string;
@@ -59,6 +60,18 @@ const chartColors = {
   gpt: "#2563eb",
   gemini: "#16a34a",
   claude: "#9333ea"
+};
+
+const modelLabels = {
+  gpt: "GPT",
+  gemini: "Gemini",
+  claude: "Claude"
+};
+
+const modelIcons = {
+  gpt: "🤖",
+  gemini: "✨",
+  claude: "🧠"
 };
 
 
@@ -108,31 +121,51 @@ function ResultCard({
   title,
   color,
   result,
-  error
+  error,
+  enabled
 }: {
   title: string;
   color: string;
   result: ModelResult | null;
   error?: string;
+  enabled: boolean;
 }) {
+  const decisionColor =
+    result?.decision === "A"
+      ? "bg-emerald-100 text-emerald-700"
+      : "bg-indigo-100 text-indigo-700";
+
   return (
-    <Card className="h-full">
-      <CardHeader>
+    <Card
+      className={cn(
+        "h-full border-slate-200 shadow-none transition-opacity",
+        !enabled && "opacity-50"
+      )}
+    >
+      <CardHeader className="border-b border-slate-200">
         <CardTitle className="flex items-center justify-between">
-          <span>{title}</span>
+          <span className="flex items-center gap-2">
+            <span className="text-lg">{modelIcons[title.toLowerCase() as keyof typeof modelIcons] ?? "🤖"}</span>
+            {title}
+          </span>
           <span className="text-sm font-medium text-muted-foreground">
             判断
           </span>
         </CardTitle>
         <CardDescription>
-          {error ? "エラー発生" : "結果の要約"}
+          {!enabled ? "無効" : error ? "エラー発生" : "結果の要約"}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {result ? (
+        {result && enabled ? (
           <>
             <div className="flex flex-col items-center gap-2">
-              <div className="rounded-full bg-slate-100 px-6 py-2 text-3xl font-bold text-slate-900 shadow-sm">
+              <div
+                className={cn(
+                  "rounded-full px-6 py-2 text-3xl font-bold",
+                  decisionColor
+                )}
+              >
                 {result.decision}
               </div>
               <ConfidenceChart value={result.confidence} color={color} />
@@ -167,6 +200,10 @@ function ResultCard({
               </div>
             ) : null}
           </>
+        ) : !enabled ? (
+          <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
+            チェックが外れているため無効です
+          </div>
         ) : (
           <p className="text-sm text-muted-foreground">未実行</p>
         )}
@@ -186,6 +223,9 @@ export default function HomePage() {
   const [scenarioText, setScenarioText] = useState(CASES[0].scenarioText);
   const [optionA, setOptionA] = useState(CASES[0].optionA);
   const [optionB, setOptionB] = useState(CASES[0].optionB);
+  const [enabledModels, setEnabledModels] = useState<
+    Array<"gpt" | "gemini" | "claude">
+  >(["gpt", "gemini", "claude"]);
   const [results, setResults] = useState<ApiResponse["results"] | null>(null);
   const [errors, setErrors] = useState<Record<string, string> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -226,12 +266,23 @@ export default function HomePage() {
       caseId,
       principleId,
       ifConditions,
+      enabledModels,
       targetConfidence,
       scenarioText,
       optionA,
       optionB
     };
-  }, [caseId, principleId, ifPrimary, ifSecondary, targetConfidence, scenarioText, optionA, optionB]);
+  }, [
+    caseId,
+    principleId,
+    ifPrimary,
+    ifSecondary,
+    enabledModels,
+    targetConfidence,
+    scenarioText,
+    optionA,
+    optionB
+  ]);
 
   const runEvaluation = useCallback(async () => {
     setLoading(true);
@@ -274,7 +325,18 @@ export default function HomePage() {
     setScenarioText(entry.input.scenarioText);
     setOptionA(entry.input.optionA);
     setOptionB(entry.input.optionB);
+    setEnabledModels(entry.input.enabledModels);
     setResults(entry.results);
+  };
+
+  const toggleModel = (modelId: "gpt" | "gemini" | "claude") => {
+    setEnabledModels((prev) => {
+      if (prev.includes(modelId)) {
+        const next = prev.filter((item) => item !== modelId);
+        return next.length ? next : prev;
+      }
+      return [...prev, modelId];
+    });
   };
 
   const generateRandomScenario = async () => {
@@ -343,13 +405,39 @@ export default function HomePage() {
           ) : null}
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_1.9fr]">
+        <div className="grid gap-6 lg:grid-cols-[0.9fr_2.1fr]">
           <Card className="border-slate-200 shadow-none">
             <CardHeader className="border-b border-slate-200">
               <CardTitle>入力フォーム</CardTitle>
               <CardDescription>判断原理とif条件を設定</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <Label>有効にするモデル</Label>
+                <div className="grid gap-2 text-sm">
+                  {(Object.keys(modelLabels) as Array<keyof typeof modelLabels>).map(
+                    (modelId) => (
+                      <label
+                        key={modelId}
+                        className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className="text-lg">{modelIcons[modelId]}</span>
+                          {modelLabels[modelId]}
+                        </span>
+                        <input
+                          type="checkbox"
+                          checked={enabledModels.includes(modelId)}
+                          onChange={() => toggleModel(modelId)}
+                        />
+                      </label>
+                    )
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  少なくとも1つ選択してください。
+                </p>
+              </div>
               <div className="space-y-2">
                 <Label>ケース選択</Label>
                 <div className="grid gap-2">
@@ -465,22 +553,25 @@ export default function HomePage() {
             </div>
             <div className="grid gap-4 md:grid-cols-3">
               <ResultCard
-                title="GPT"
+                title={modelLabels.gpt}
                 color={chartColors.gpt}
                 result={results?.gpt ?? null}
                 error={errors?.gpt}
+                enabled={enabledModels.includes("gpt")}
               />
               <ResultCard
-                title="Gemini"
+                title={modelLabels.gemini}
                 color={chartColors.gemini}
                 result={results?.gemini ?? null}
                 error={errors?.gemini}
+                enabled={enabledModels.includes("gemini")}
               />
               <ResultCard
-                title="Claude"
+                title={modelLabels.claude}
                 color={chartColors.claude}
                 result={results?.claude ?? null}
                 error={errors?.claude}
+                enabled={enabledModels.includes("claude")}
               />
             </div>
           </div>
