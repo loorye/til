@@ -67,45 +67,6 @@ const modelLabels = {
   claude: "Claude"
 };
 
-const OpenAIIcon = () => (
-  <svg viewBox="0 0 120 24" className="h-5 w-auto" aria-label="OpenAI">
-    <text x="0" y="18" fontSize="18" fontWeight="700" fill="currentColor">
-      OpenAI
-    </text>
-  </svg>
-);
-
-const GeminiIcon = () => (
-  <svg viewBox="0 0 24 24" className="h-5 w-5" aria-label="Google Gemini">
-    <defs>
-      <linearGradient id="geminiGradient" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stopColor="#4285F4" />
-        <stop offset="50%" stopColor="#9B72CB" />
-        <stop offset="100%" stopColor="#DB4437" />
-      </linearGradient>
-    </defs>
-    <path
-      d="M12 2.5l2.3 4.9 4.9 2.3-4.9 2.3-2.3 4.9-2.3-4.9-4.9-2.3 4.9-2.3L12 2.5z"
-      fill="url(#geminiGradient)"
-    />
-  </svg>
-);
-
-const AnthropicIcon = () => (
-  <svg viewBox="0 0 120 24" className="h-5 w-auto" aria-label="Anthropic">
-    <text x="0" y="18" fontSize="18" fontWeight="700" fill="currentColor">
-      Anthropic
-    </text>
-  </svg>
-);
-
-const modelIcons = {
-  gpt: OpenAIIcon,
-  gemini: GeminiIcon,
-  claude: AnthropicIcon
-};
-
-
 function ConfidenceChart({
   value,
   color
@@ -173,14 +134,7 @@ function ResultCard({
     >
       <CardHeader className="border-b border-slate-200">
         <CardTitle className="flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            {(() => {
-              const Icon =
-                modelIcons[title.toLowerCase() as keyof typeof modelIcons];
-              return Icon ? <Icon /> : null;
-            })()}
-            {title}
-          </span>
+          <span className="text-xl font-semibold">{title}</span>
           <span className="text-sm font-medium text-muted-foreground">
             判断
           </span>
@@ -454,11 +408,7 @@ export default function HomePage() {
                         key={modelId}
                         className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2"
                       >
-                        <span className="flex items-center gap-2">
-                          {(() => {
-                            const Icon = modelIcons[modelId];
-                            return Icon ? <Icon /> : null;
-                          })()}
+                        <span className="text-base font-semibold">
                           {modelLabels[modelId]}
                         </span>
                         <input
