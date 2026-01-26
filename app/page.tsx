@@ -5,8 +5,7 @@ import {
   PieChart,
   Pie,
   Cell,
-  ResponsiveContainer,
-  Label as PieLabel
+  ResponsiveContainer
 } from "recharts";
 
 import { CASES, CASE_MAP, CaseId } from "@/lib/cases";
@@ -68,10 +67,42 @@ const modelLabels = {
   claude: "Claude"
 };
 
+const OpenAIIcon = () => (
+  <svg viewBox="0 0 120 24" className="h-5 w-auto" aria-label="OpenAI">
+    <text x="0" y="18" fontSize="18" fontWeight="700" fill="currentColor">
+      OpenAI
+    </text>
+  </svg>
+);
+
+const GeminiIcon = () => (
+  <svg viewBox="0 0 24 24" className="h-5 w-5" aria-label="Google Gemini">
+    <defs>
+      <linearGradient id="geminiGradient" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stopColor="#4285F4" />
+        <stop offset="50%" stopColor="#9B72CB" />
+        <stop offset="100%" stopColor="#DB4437" />
+      </linearGradient>
+    </defs>
+    <path
+      d="M12 2.5l2.3 4.9 4.9 2.3-4.9 2.3-2.3 4.9-2.3-4.9-4.9-2.3 4.9-2.3L12 2.5z"
+      fill="url(#geminiGradient)"
+    />
+  </svg>
+);
+
+const AnthropicIcon = () => (
+  <svg viewBox="0 0 120 24" className="h-5 w-auto" aria-label="Anthropic">
+    <text x="0" y="18" fontSize="18" fontWeight="700" fill="currentColor">
+      Anthropic
+    </text>
+  </svg>
+);
+
 const modelIcons = {
-  gpt: "🤖",
-  gemini: "✨",
-  claude: "🧠"
+  gpt: OpenAIIcon,
+  gemini: GeminiIcon,
+  claude: AnthropicIcon
 };
 
 
@@ -91,28 +122,26 @@ function ConfidenceChart({
   );
 
   return (
-    <div className="h-40 w-40">
+    <div className="relative h-44 w-44">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
             data={data}
             dataKey="value"
-            innerRadius={55}
-            outerRadius={70}
+            innerRadius={60}
+            outerRadius={78}
             startAngle={90}
             endAngle={-270}
             stroke="none"
           >
             <Cell fill={color} />
             <Cell fill="#e5e7eb" />
-            <PieLabel
-              value={`${value}%`}
-              position="center"
-              className="text-lg font-semibold"
-            />
           </Pie>
         </PieChart>
       </ResponsiveContainer>
+      <div className="absolute inset-0 flex items-center justify-center text-3xl font-bold text-slate-900">
+        {value}%
+      </div>
     </div>
   );
 }
@@ -145,7 +174,11 @@ function ResultCard({
       <CardHeader className="border-b border-slate-200">
         <CardTitle className="flex items-center justify-between">
           <span className="flex items-center gap-2">
-            <span className="text-lg">{modelIcons[title.toLowerCase() as keyof typeof modelIcons] ?? "🤖"}</span>
+            {(() => {
+              const Icon =
+                modelIcons[title.toLowerCase() as keyof typeof modelIcons];
+              return Icon ? <Icon /> : null;
+            })()}
             {title}
           </span>
           <span className="text-sm font-medium text-muted-foreground">
@@ -405,13 +438,13 @@ export default function HomePage() {
           ) : null}
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[0.9fr_2.1fr]">
+        <div className="grid gap-6 lg:grid-cols-[0.8fr_2.2fr]">
           <Card className="border-slate-200 shadow-none">
             <CardHeader className="border-b border-slate-200">
               <CardTitle>入力フォーム</CardTitle>
               <CardDescription>判断原理とif条件を設定</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="max-h-[70vh] space-y-6 overflow-y-auto pr-2">
               <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <Label>有効にするモデル</Label>
                 <div className="grid gap-2 text-sm">
@@ -422,7 +455,10 @@ export default function HomePage() {
                         className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2"
                       >
                         <span className="flex items-center gap-2">
-                          <span className="text-lg">{modelIcons[modelId]}</span>
+                          {(() => {
+                            const Icon = modelIcons[modelId];
+                            return Icon ? <Icon /> : null;
+                          })()}
                           {modelLabels[modelId]}
                         </span>
                         <input
