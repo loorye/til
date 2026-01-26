@@ -530,19 +530,21 @@ export default function HomePage() {
 
               <div className="space-y-3">
                 <Label>if条件（基本）</Label>
-                <Input
+                <Textarea
                   value={ifPrimary}
                   onChange={(event) => setIfPrimary(event.target.value)}
                   placeholder="例: 被害者は医療従事者である"
+                  className="min-h-[90px]"
                 />
                 <Accordion type="single" collapsible>
                   <AccordionItem value="if2">
                     <AccordionTrigger>2つ目のif条件（任意）</AccordionTrigger>
                     <AccordionContent>
-                      <Input
+                      <Textarea
                         value={ifSecondary}
                         onChange={(event) => setIfSecondary(event.target.value)}
                         placeholder="追加のif条件を入力"
+                        className="min-h-[90px]"
                       />
                     </AccordionContent>
                   </AccordionItem>
