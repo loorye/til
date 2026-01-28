@@ -293,7 +293,7 @@ export async function POST(request: Request) {
   const openaiModel = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
   const bedrockModel =
     process.env.BEDROCK_MODEL_ID ?? "anthropic.claude-3-5-sonnet-20240620-v1:0";
-  const geminiModel = process.env.GEMINI_MODEL ?? "gemini-1.5-flash-latest";
+  const geminiModel = process.env.GEMINI_MODEL ?? "gemini-1.5-flash-002";
 
   const errors: Record<string, string> = {};
 
