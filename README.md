@@ -38,7 +38,7 @@ AWS_SESSION_TOKEN=your_aws_session_token
 OPENAI_MODEL=gpt-4o-mini
 BEDROCK_REGION=us-east-1
 BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20240620-v1:0
-GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MODEL=gemini-1.5-flash-latest
 ```
 
 ## 当日の運用手順
