@@ -32,9 +32,9 @@ export async function callOpenAI({
           content: userPrompt
         }
       ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
+      text: {
+        format: {
+          type: "json_schema",
           name: "thought_experiment_result",
           schema,
           strict: true
