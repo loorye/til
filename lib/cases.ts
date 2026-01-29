@@ -1,4 +1,4 @@
-export type CaseId = "trolley" | "trolley2" | "theseus";
+export type CaseId = "trolley" | "trolley2" | "theseus" | "dilemma";
 
 export type ThoughtCase = {
   id: CaseId;
@@ -11,7 +11,7 @@ export type ThoughtCase = {
 export const CASES: ThoughtCase[] = [
   {
     id: "trolley",
-    title: "トロッコ問題（標準）",
+    title: "トロッコ問題",
     scenarioText:
       "あなたはトロッコの線路の分岐点に立ち、レバーを手にしています。向こうから制御不能の暴走するトロッコが迫ってきました。このまままっすぐ進むと線路上の5人がはねられてしまいます。一方、レバーを引くと別の路線にトロッコが流れ、その先にいる1人がはねられます。さあ、あなたはどうしますか？",
     optionA: "レバーを引く（5人救う/1人犠牲）",
@@ -30,9 +30,17 @@ export const CASES: ThoughtCase[] = [
     title: "テセウスの船",
     scenarioText:
       "ギリシャの英雄テセウスという人が船を所有していました。テセウスの船は経年劣化で部品が傷んできたため、壊れた部品は徐々に新しいものと交換されていきました。そして、最終的には船の全ての部品が交換され、もとの部品はひとつも残っていない状態になりました。さて、ここで問題です。全ての部品が交換された後の船は、最初のテセウスの船と同じ船と言えるのでしょうか？",
-    optionA: "同じ船",
-    optionB: "別の船"
-  }
+    optionA: "同じ船である",
+    optionB: "別の船である"
+  },
+  {
+    id: "dilemma",
+    title: "囚人のジレンマ",
+    scenarioText:
+      "あなたともう1人は別々に事情聴取を受けています。互いに相談はできません。あなたは次のどちらかを選べます。•	もしあなたが黙秘し、相手が自白した場合：あなたは10年、相手は0年 •	もしあなたが自白し、相手が黙秘した場合：あなたは0年、相手は10年 •	もし両方が黙秘した場合：両方とも1年 •	もし両方が自白した場合：両方とも5年 あなたはどちらを選びますか？",
+    optionA: "同じ船である",
+    optionB: "別の船である"
+  },
 ];
 
 export const CASE_MAP = new Map(CASES.map((item) => [item.id, item]));

@@ -13,7 +13,7 @@ import { PRINCIPLES, PrincipleId } from "@/lib/principles";
 import { ApiResponse, ModelResult, ScenarioPayload } from "@/lib/schema";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles, RotateCcw, Download, Trash2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -21,7 +21,6 @@ import {
   CardHeader,
   CardTitle
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
@@ -57,9 +56,9 @@ type HistoryEntry = {
 const HISTORY_STORAGE_KEY = "thought-experiment-history";
 
 const chartColors = {
-  gpt: "hsl(59, 100%, 70%)",
-  gemini: "hsl(142, 71%, 45%)",
-  claude: "hsl(262, 83%, 58%)"
+  gpt: "hsl(38 92% 50%)",
+  gemini: "hsl(158 64% 40%)",
+  claude: "hsl(262 72% 55%)"
 };
 
 const modelLabels = {
@@ -68,27 +67,16 @@ const modelLabels = {
   claude: "Claude"
 };
 
-function ModelIcon({ modelId }: { modelId: "gpt" | "gemini" | "claude" }) {
-  const iconStyles = {
-    gpt: "bg-[hsl(59,100%,70%)]/20 text-[hsl(59,100%,70%)] border-[hsl(59,100%,70%)]/40",
-    gemini: "bg-[hsl(142,71%,45%)]/20 text-[hsl(142,71%,45%)] border-[hsl(142,71%,45%)]/40",
-    claude: "bg-[hsl(262,83%,58%)]/20 text-[hsl(262,83%,58%)] border-[hsl(262,83%,58%)]/40"
-  };
-
-  const labels = {
+function ModelIndicator({ modelId }: { modelId: "gpt" | "gemini" | "claude" }) {
+  const initials = {
     gpt: "G",
-    gemini: "G",
-    claude: "C"
+    gemini: "Ge",
+    claude: "Cl"
   };
 
   return (
-    <div
-      className={cn(
-        "flex h-10 w-10 items-center justify-center rounded-lg border-2 font-bold text-lg",
-        iconStyles[modelId]
-      )}
-    >
-      {labels[modelId]}
+    <div className={cn("model-indicator", `model-indicator--${modelId}`)}>
+      {initials[modelId]}
     </div>
   );
 }
@@ -109,25 +97,26 @@ function ConfidenceChart({
   );
 
   return (
-    <div className="relative h-44 w-44">
+    <div className="confidence-ring h-36 w-36">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
             data={data}
             dataKey="value"
-            innerRadius={60}
-            outerRadius={78}
+            innerRadius={52}
+            outerRadius={68}
             startAngle={90}
             endAngle={-270}
             stroke="none"
           >
             <Cell fill={color} />
-            <Cell fill="hsl(222, 15%, 22%)" />
+            <Cell fill="hsl(35 20% 92%)" />
           </Pie>
         </PieChart>
       </ResponsiveContainer>
-      <div className="absolute inset-0 flex items-center justify-center text-3xl font-bold text-foreground">
-        {value}%
+      <div className="confidence-ring__value">
+        <span className="confidence-ring__number">{value}</span>
+        <span className="confidence-ring__label">確信度</span>
       </div>
     </div>
   );
@@ -139,7 +128,8 @@ function ResultCard({
   result,
   error,
   enabled,
-  modelId
+  modelId,
+  animationDelay
 }: {
   title: string;
   color: string;
@@ -147,84 +137,106 @@ function ResultCard({
   error?: string;
   enabled: boolean;
   modelId: "gpt" | "gemini" | "claude";
+  animationDelay?: string;
 }) {
-  const decisionColor =
-    result?.decision === "A"
-      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
-      : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40";
-
   return (
     <Card
       className={cn(
-        "h-full card-enhanced result-card-enter transition-opacity",
-        !enabled && "opacity-40"
+        "card-surface model-card h-full",
+        `model-card--${modelId}`,
+        !enabled && "card-disabled",
+        "animate-slide-up opacity-0"
       )}
+      style={{ animationDelay }}
     >
-      <div className="geometric-pattern"></div>
-      <CardHeader className="border-b border-border/50 relative z-10">
-        <CardTitle className="flex items-center justify-between">
+      <CardHeader className="pb-4">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <ModelIcon modelId={modelId} />
-            <span className="text-xl font-semibold">{title}</span>
+            <ModelIndicator modelId={modelId} />
+            <div>
+              <CardTitle className="text-lg font-semibold tracking-tight">
+                {title}
+              </CardTitle>
+              <CardDescription className="text-xs mt-0.5">
+                {!enabled ? "無効" : error ? "エラー発生" : "判断結果"}
+              </CardDescription>
+            </div>
           </div>
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            判断
-          </span>
-        </CardTitle>
-        <CardDescription>
-          {!enabled ? "無効" : error ? "エラー発生" : "結果の要約"}
-        </CardDescription>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-4 relative z-10">
+      <CardContent className="space-y-5">
         {result && enabled ? (
           <>
-            <div className="flex flex-col items-center gap-3 py-2">
+            <div className="flex flex-col items-center gap-4 py-2">
               <div
                 className={cn(
-                  "rounded-full px-6 py-2 text-3xl font-bold backdrop-blur-sm",
-                  decisionColor
+                  "decision-badge",
+                  result.decision === "A" ? "decision-badge--a" : "decision-badge--b"
                 )}
               >
                 {result.decision}
               </div>
               <ConfidenceChart value={result.confidence} color={color} />
             </div>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-secondary">前提条件（最大3つ）</p>
-              <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-muted-foreground">
-                {result.key_assumptions.length ? (
-                  result.key_assumptions.map((item, index) => (
-                    <li key={index}>{item}</li>
-                  ))
-                ) : (
-                  <li>なし</li>
-                )}
-              </ul>
+
+            <div className="space-y-4 pt-2 border-t border-border/50">
+              <div>
+                <p className="section-label">前提条件</p>
+                <ul className="space-y-1.5">
+                  {result.key_assumptions.length ? (
+                    result.key_assumptions.map((item, index) => (
+                      <li
+                        key={index}
+                        className="text-sm text-muted-foreground pl-3 relative before:content-[''] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-border"
+                      >
+                        {item}
+                      </li>
+                    ))
+                  ) : (
+                    <li className="text-sm text-muted-foreground/60 italic">なし</li>
+                  )}
+                </ul>
+              </div>
+
+              <div>
+                <p className="section-label">判断の要約</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {result.reasoning_summary}
+                </p>
+              </div>
+
+              <div>
+                <p className="section-label">if条件による変化</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {result.what_changed_by_if}
+                </p>
+              </div>
             </div>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-secondary">判断の要約</p>
-              <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-                {result.reasoning_summary}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-secondary">if条件による変化</p>
-              <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-                {result.what_changed_by_if}
-              </p>
-            </div>
-            {error ? (
-              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+
+            {error && (
+              <div className="error-message text-sm">
                 {error}
               </div>
-            ) : null}
+            )}
           </>
         ) : !enabled ? (
-          <div className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-sm text-muted-foreground">
-            チェックが外れているため無効です
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
+              <span className="text-muted-foreground/40 text-lg">—</span>
+            </div>
+            <p className="text-sm text-muted-foreground/60">
+              モデルが無効です
+            </p>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">未実行</p>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="w-12 h-12 rounded-full bg-muted/30 flex items-center justify-center mb-3">
+              <Sparkles className="w-5 h-5 text-muted-foreground/30" />
+            </div>
+            <p className="text-sm text-muted-foreground/60">
+              実行待ち
+            </p>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -392,98 +404,107 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen px-6 py-10 scroll-fade-in">
-      <div className="mx-auto flex max-w-7xl flex-col gap-8">
-        <header className="page-header flex flex-col gap-4 card-enhanced p-8">
-          <div className="geometric-pattern"></div>
-          <div className="flex flex-wrap items-center justify-between gap-4 relative z-10">
+    <div className="page-container min-h-screen px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mx-auto max-w-7xl flex flex-col gap-8">
+        {/* Header */}
+        <header className="page-header card-surface rounded-xl p-6 sm:p-8 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-semibold mb-2 bg-gradient-to-r from-foreground via-primary to-secondary bg-clip-text text-transparent">
-                思考実験 × 生成AI ワーク
+              <h1 className="text-3xl sm:text-4xl font-semibold text-foreground tracking-tight">
+                思考実験 × 生成AI
               </h1>
-              <p className="text-base text-muted-foreground font-light">
-                GPT / Gemini / Claude
+              <p className="text-base text-muted-foreground mt-1 font-light">
+                倫理的判断の比較ワークショップ
               </p>
-              <p className="text-sm text-secondary mt-1">
-                現在のケース: <span className="font-medium">{selectedCase.title}</span>
-              </p>
+              <div className="flex items-center gap-3 mt-3">
+                <span
+                  className={cn(
+                    "mode-badge",
+                    MOCK_MODE ? "mode-badge--mock" : "mode-badge--live"
+                  )}
+                >
+                  <span className="mode-badge__dot" />
+                  {MOCK_MODE ? "Mock Mode" : "Live Mode"}
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {selectedCase.title}
+                </span>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <span
-                className={cn(
-                  "rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-wider badge-glow",
-                  MOCK_MODE
-                    ? "border-amber-500/60 bg-amber-500/20 text-amber-300"
-                    : "border-emerald-500/60 bg-emerald-500/20 text-emerald-300"
-                )}
-              >
-                {MOCK_MODE ? "MOCK_MODE" : "LIVE_MODE"}
-              </span>
-              <Button onClick={runEvaluation} disabled={loading} className="bg-primary hover:bg-primary/80 text-primary-foreground font-medium">
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    実行中...
-                  </>
-                ) : (
-                  "実行"
-                )}
-              </Button>
-            </div>
+            <Button
+              onClick={runEvaluation}
+              disabled={loading}
+              className="btn-primary h-11 px-6 text-sm"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 spinner" />
+                  評価中...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  評価を実行
+                </>
+              )}
+            </Button>
           </div>
-          {errors?.global ? (
-            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive relative z-10">
+
+          {errors?.global && (
+            <div className="error-message mt-4">
               {errors.global}
             </div>
-          ) : null}
+          )}
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[0.8fr_2.2fr]">
-          <Card className="card-enhanced">
-            <div className="geometric-pattern"></div>
-            <CardHeader className="border-b border-border/50 relative z-10">
-              <CardTitle>入力フォーム</CardTitle>
-              <CardDescription>判断原理とif条件を設定</CardDescription>
+        {/* Main Content */}
+        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+          {/* Input Panel */}
+          <Card className="card-surface animate-slide-up" style={{ animationDelay: "100ms" }}>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl">設定</CardTitle>
+              <CardDescription>シナリオと判断原理を選択</CardDescription>
             </CardHeader>
-            <CardContent className="max-h-[70vh] space-y-6 overflow-y-auto pr-2 relative z-10">
-              <div className="space-y-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3 backdrop-blur-sm">
-                <Label className="text-xs uppercase tracking-wide font-semibold text-secondary">有効にするモデル</Label>
-                <div className="grid gap-2 text-sm">
+            <CardContent className="space-y-6 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
+              {/* Model Selection */}
+              <div className="space-y-3">
+                <Label className="section-label">有効なモデル</Label>
+                <div className="grid gap-2">
                   {(Object.keys(modelLabels) as Array<keyof typeof modelLabels>).map(
                     (modelId) => (
                       <label
                         key={modelId}
-                        className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-card/50 px-3 py-2 transition-all hover:border-primary/40 hover:bg-card/70"
+                        className={cn(
+                          "selection-card flex items-center justify-between",
+                          enabledModels.includes(modelId) && "selection-card--active"
+                        )}
                       >
-                        <span className="text-base font-semibold">
-                          {modelLabels[modelId]}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <ModelIndicator modelId={modelId} />
+                          <span className="font-medium">{modelLabels[modelId]}</span>
+                        </div>
                         <input
                           type="checkbox"
                           checked={enabledModels.includes(modelId)}
                           onChange={() => toggleModel(modelId)}
-                          className="w-4 h-4 accent-primary"
                         />
                       </label>
                     )
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  少なくとも1つ選択してください。
-                </p>
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs uppercase tracking-wide font-semibold text-secondary">ケース選択</Label>
+
+              {/* Case Selection */}
+              <div className="space-y-3">
+                <Label className="section-label">ケース選択</Label>
                 <div className="grid gap-2">
                   {CASES.map((item) => (
                     <button
                       key={item.id}
                       onClick={() => setCaseId(item.id)}
                       className={cn(
-                        "rounded-lg border px-4 py-2 text-left text-sm transition-all",
-                        caseId === item.id
-                          ? "border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                          : "border-border bg-card/50 hover:border-primary/40 hover:bg-card/70"
+                        "selection-card text-left text-sm",
+                        caseId === item.id && "selection-card--active"
                       )}
                       type="button"
                     >
@@ -493,66 +514,88 @@ export default function HomePage() {
                 </div>
                 <Button
                   variant="outline"
-                  className="mt-2 w-full border-border hover:bg-muted/50"
+                  className="btn-outline w-full mt-2"
                   type="button"
                   onClick={generateRandomScenario}
                   disabled={randomLoading}
                 >
                   {randomLoading ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="mr-2 h-4 w-4 spinner" />
                       生成中...
                     </>
                   ) : (
-                    "ランダム生成（思考実験）"
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      ランダム生成
+                    </>
                   )}
                 </Button>
               </div>
 
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>シナリオ本文（編集可）</Label>
-                  <Textarea
-                    value={scenarioText}
-                    onChange={(event) => setScenarioText(event.target.value)}
-                    className="min-h-[140px]"
-                  />
-                </div>
-                <div className="grid gap-3 text-sm text-muted-foreground">
-                  <div className="space-y-1">
-                    <Label className="text-xs">選択肢A</Label>
+              {/* Scenario Text */}
+              <div className="space-y-3">
+                <Label className="section-label">シナリオ本文</Label>
+                <Textarea
+                  value={scenarioText}
+                  onChange={(event) => setScenarioText(event.target.value)}
+                  className="min-h-[120px] text-sm"
+                />
+              </div>
+
+              {/* Options */}
+              <div className="space-y-3">
+                <Label className="section-label">選択肢</Label>
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1.5 block">
+                      選択肢 A
+                    </Label>
                     <Textarea
                       value={optionA}
                       onChange={(event) => setOptionA(event.target.value)}
-                      className="min-h-[90px]"
+                      className="min-h-[80px] text-sm"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">選択肢B</Label>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1.5 block">
+                      選択肢 B
+                    </Label>
                     <Textarea
                       value={optionB}
                       onChange={(event) => setOptionB(event.target.value)}
-                      className="min-h-[90px]"
+                      className="min-h-[80px] text-sm"
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    選択肢A/Bは必須です。
-                  </p>
                 </div>
               </div>
 
+              {/* Judgment Principle */}
               <div className="space-y-3">
-                <Label>判断原理</Label>
+                <Label className="section-label">判断原理</Label>
                 <RadioGroup
                   value={principleId}
                   onValueChange={(value) => setPrincipleId(value as PrincipleId)}
+                  className="space-y-2"
                 >
                   {PRINCIPLES.map((principle) => (
-                    <div key={principle.id} className="flex items-start gap-3">
-                      <RadioGroupItem value={principle.id} id={principle.id} />
-                      <Label htmlFor={principle.id} className="text-sm">
-                        <span className="font-semibold">{principle.label}</span>
-                        <span className="block text-xs text-muted-foreground">
+                    <div
+                      key={principle.id}
+                      className={cn(
+                        "selection-card flex items-start gap-3 py-3",
+                        principleId === principle.id && "selection-card--active"
+                      )}
+                    >
+                      <RadioGroupItem
+                        value={principle.id}
+                        id={principle.id}
+                        className="mt-0.5"
+                      />
+                      <Label htmlFor={principle.id} className="cursor-pointer flex-1">
+                        <span className="font-medium text-sm block">
+                          {principle.label}
+                        </span>
+                        <span className="text-xs text-muted-foreground mt-0.5 block leading-relaxed">
                           {principle.description}
                         </span>
                       </Label>
@@ -561,51 +604,58 @@ export default function HomePage() {
                 </RadioGroup>
               </div>
 
+              {/* If Conditions */}
               <div className="space-y-3">
-                <Label>if条件（基本）</Label>
+                <Label className="section-label">if条件</Label>
                 <Textarea
                   value={ifPrimary}
                   onChange={(event) => setIfPrimary(event.target.value)}
                   placeholder="例: 被害者は医療従事者である"
-                  className="min-h-[90px]"
+                  className="min-h-[80px] text-sm"
                 />
                 <Accordion type="single" collapsible>
-                  <AccordionItem value="if2">
-                    <AccordionTrigger>2つ目のif条件（任意）</AccordionTrigger>
+                  <AccordionItem value="if2" className="border-none">
+                    <AccordionTrigger className="text-xs text-muted-foreground hover:no-underline py-2">
+                      2つ目のif条件を追加
+                    </AccordionTrigger>
                     <AccordionContent>
                       <Textarea
                         value={ifSecondary}
                         onChange={(event) => setIfSecondary(event.target.value)}
-                        placeholder="追加のif条件を入力"
-                        className="min-h-[90px]"
+                        placeholder="追加のif条件"
+                        className="min-h-[80px] text-sm"
                       />
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
               </div>
-
             </CardContent>
           </Card>
 
-          <div className="space-y-4">
+          {/* Results Panel */}
+          <div className="space-y-5">
             <div className="flex items-center justify-between">
-              <h2 className="text-3xl font-semibold">結果比較</h2>
+              <h2 className="text-2xl font-semibold tracking-tight">判断結果</h2>
               <Button
                 variant="outline"
-                className="border-border hover:bg-muted/50"
+                className="btn-outline"
                 onClick={runEvaluation}
                 disabled={loading}
               >
                 {loading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    実行中...
+                    <Loader2 className="mr-2 h-4 w-4 spinner" />
+                    実行中
                   </>
                 ) : (
-                  "再実行（同一入力）"
+                  <>
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    再実行
+                  </>
                 )}
               </Button>
             </div>
+
             <div className="grid gap-4 md:grid-cols-3">
               <ResultCard
                 title={modelLabels.gpt}
@@ -614,6 +664,7 @@ export default function HomePage() {
                 error={errors?.gpt}
                 enabled={enabledModels.includes("gpt")}
                 modelId="gpt"
+                animationDelay="150ms"
               />
               <ResultCard
                 title={modelLabels.gemini}
@@ -622,6 +673,7 @@ export default function HomePage() {
                 error={errors?.gemini}
                 enabled={enabledModels.includes("gemini")}
                 modelId="gemini"
+                animationDelay="200ms"
               />
               <ResultCard
                 title={modelLabels.claude}
@@ -630,85 +682,95 @@ export default function HomePage() {
                 error={errors?.claude}
                 enabled={enabledModels.includes("claude")}
                 modelId="claude"
+                animationDelay="250ms"
               />
             </div>
           </div>
         </div>
 
-        <Card className="card-enhanced">
-          <div className="geometric-pattern"></div>
-          <CardHeader className="border-b border-border/50 relative z-10">
-            <CardTitle>履歴</CardTitle>
-            <CardDescription>最新の実行結果が上に表示されます</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 relative z-10">
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                className="border-border hover:bg-muted/50"
-                onClick={() => setHistory([])}
-                disabled={history.length === 0}
-              >
-                履歴をクリア
-              </Button>
-              <Button
-                variant="outline"
-                className="border-border hover:bg-muted/50"
-                onClick={exportHistory}
-                disabled={history.length === 0}
-              >
-                JSONエクスポート
-              </Button>
+        {/* History Section */}
+        <Card className="card-surface animate-slide-up" style={{ animationDelay: "300ms" }}>
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-xl">実行履歴</CardTitle>
+                <CardDescription className="mt-1">
+                  クリックで過去の結果を復元
+                </CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="btn-outline"
+                  onClick={exportHistory}
+                  disabled={history.length === 0}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  エクスポート
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="btn-outline"
+                  onClick={() => setHistory([])}
+                  disabled={history.length === 0}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  クリア
+                </Button>
+              </div>
             </div>
+          </CardHeader>
+          <CardContent>
             <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="min-w-full text-sm">
-                <thead className="bg-muted/50 text-left">
+              <table className="history-table">
+                <thead>
                   <tr>
-                    <th className="px-3 py-3 text-xs uppercase tracking-wide font-semibold text-secondary">実行時刻</th>
-                    <th className="px-3 py-3 text-xs uppercase tracking-wide font-semibold text-secondary">ケース</th>
-                    <th className="px-3 py-3 text-xs uppercase tracking-wide font-semibold text-secondary">判断原理</th>
-                    <th className="px-3 py-3 text-xs uppercase tracking-wide font-semibold text-secondary">if条件</th>
-                    <th className="px-3 py-3 text-xs uppercase tracking-wide font-semibold text-secondary">結果</th>
+                    <th>実行時刻</th>
+                    <th>ケース</th>
+                    <th>判断原理</th>
+                    <th>if条件</th>
+                    <th>結果</th>
                   </tr>
                 </thead>
                 <tbody>
                   {history.length === 0 ? (
                     <tr>
-                      <td className="px-3 py-4 text-muted-foreground" colSpan={5}>
-                        履歴はまだありません
+                      <td colSpan={5} className="text-center py-8 text-muted-foreground">
+                        履歴がありません
                       </td>
                     </tr>
                   ) : (
                     history.map((entry) => (
                       <tr
                         key={entry.id}
-                        className="cursor-pointer border-t border-border hover:bg-muted/30 transition-colors"
                         onClick={() => restoreFromHistory(entry)}
                       >
-                        <td className="px-3 py-2 whitespace-nowrap">
+                        <td className="whitespace-nowrap text-sm">
                           {entry.timestamp}
                         </td>
-                        <td className="px-3 py-2">
+                        <td className="text-sm">
                           {CASE_MAP.get(entry.input.caseId)?.title}
                         </td>
-                        <td className="px-3 py-2">
-                          {
-                            PRINCIPLES.find(
-                              (item) => item.id === entry.input.principleId
-                            )?.label
-                          }
+                        <td className="text-sm">
+                          {PRINCIPLES.find((item) => item.id === entry.input.principleId)?.label}
                         </td>
-                        <td className="px-3 py-2">
-                          {entry.input.ifConditions.join(" / ") || "なし"}
+                        <td className="text-sm text-muted-foreground">
+                          {entry.input.ifConditions.join(" / ") || "—"}
                         </td>
-                        <td className="px-3 py-2 font-mono text-xs">
-                          GPT:{entry.results.gpt.decision}({
-                            entry.results.gpt.confidence
-                          }) / Gemini:{entry.results.gemini.decision}({
-                            entry.results.gemini.confidence
-                          }) / Claude:{entry.results.claude.decision}({
-                            entry.results.claude.confidence
-                          })
+                        <td>
+                          <div className="flex flex-wrap gap-1.5">
+                            <span className="result-mini result-mini--gpt">
+                              G: {entry.results.gpt.decision}({entry.results.gpt.confidence})
+                            </span>
+                            <span className="result-mini result-mini--gemini">
+                              Ge: {entry.results.gemini.decision}({entry.results.gemini.confidence})
+                            </span>
+                            <span className="result-mini result-mini--claude">
+                              Cl: {entry.results.claude.decision}({entry.results.claude.confidence})
+                            </span>
+                          </div>
                         </td>
                       </tr>
                     ))

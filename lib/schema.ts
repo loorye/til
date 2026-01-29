@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const InputSchema = z.object({
-  caseId: z.enum(["trolley", "trolley2", "theseus"]),
+  caseId: z.enum(["trolley", "trolley2", "theseus", "dilemma"]),
   principleId: z.string(),
   ifConditions: z.array(z.string().min(1)).max(2),
   enabledModels: z.array(z.enum(["gpt", "gemini", "claude"])).min(1),
