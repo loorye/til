@@ -201,9 +201,7 @@ function ResultCard({
 
 export default function HomePage() {
   const [caseId, setCaseId] = useState<CaseId>("trolley");
-  const [principleId, setPrincipleId] = useState<PrincipleId>(
-    "utilitarian"
-  );
+  const [principleId, setPrincipleId] = useState<PrincipleId>("none");
   const [ifPrimary, setIfPrimary] = useState("");
   const [ifSecondary, setIfSecondary] = useState("");
   const targetConfidence = 80;

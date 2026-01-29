@@ -161,18 +161,13 @@ function makeMockResult({
   const decisionByPrinciple: Record<string, "A" | "B"> = {
     none: caseId === "trolley" ? "A" : "A",
     utilitarian: "A",
-    deontology: "B",
-    care: "A",
-    risk: caseId === "trolley" ? "A" : "B",
-    fairness: "A",
-    self_determination: "B"
+    deontology: "B"
   };
 
   const baseDecision = decisionByPrinciple[principleId] ?? "A";
   const bias = model === "gemini" ? 3 : model === "claude" ? -2 : 0;
-  const careBias = model === "claude" && principleId === "care" ? 3 : 0;
   const ifBoost = ifConditions.length * 2;
-  const confidence = clampConfidence(targetConfidence + bias + careBias + ifBoost);
+  const confidence = clampConfidence(targetConfidence + bias + ifBoost);
 
   return {
     decision: baseDecision,
