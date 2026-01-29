@@ -16,7 +16,7 @@ export async function callAnthropic({
 }): Promise<string> {
   const service = "bedrock";
   const host = `bedrock-runtime.${region}.amazonaws.com`;
-  const encodedModel = encodeURIComponent(encodeURIComponent(model));
+  const encodedModel = encodeURIComponent(model);
   const path = `/model/${encodedModel}/invoke`;
   const endpoint = `https://${host}${path}`;
 
