@@ -43,7 +43,8 @@ type HistoryEntry = {
     enabledModels: Array<"gpt" | "gemini" | "claude">;
     targetConfidence: number;
     scenarioText: string;
-    options: string[];
+    optionA: string;
+    optionB: string;
   };
   results: {
     gpt: ModelResult;
@@ -119,20 +120,10 @@ function ResultCard({
   error?: string;
   enabled: boolean;
 }) {
-  const decisionColor = (() => {
-    switch (result?.decision) {
-      case "A":
-        return "bg-emerald-100 text-emerald-700";
-      case "B":
-        return "bg-indigo-100 text-indigo-700";
-      case "C":
-        return "bg-amber-100 text-amber-700";
-      case "D":
-        return "bg-rose-100 text-rose-700";
-      default:
-        return "bg-slate-100 text-slate-700";
-    }
-  })();
+  const decisionColor =
+    result?.decision === "A"
+      ? "bg-emerald-100 text-emerald-700"
+      : "bg-indigo-100 text-indigo-700";
 
   return (
     <Card
@@ -217,12 +208,8 @@ export default function HomePage() {
   const [ifSecondary, setIfSecondary] = useState("");
   const targetConfidence = 80;
   const [scenarioText, setScenarioText] = useState(CASES[0].scenarioText);
-  const [options, setOptions] = useState<string[]>([
-    CASES[0].optionA,
-    CASES[0].optionB,
-    "",
-    ""
-  ]);
+  const [optionA, setOptionA] = useState(CASES[0].optionA);
+  const [optionB, setOptionB] = useState(CASES[0].optionB);
   const [enabledModels, setEnabledModels] = useState<
     Array<"gpt" | "gemini" | "claude">
   >(["gpt", "gemini", "claude"]);
@@ -236,7 +223,8 @@ export default function HomePage() {
 
   useEffect(() => {
     setScenarioText(selectedCase.scenarioText);
-    setOptions([selectedCase.optionA, selectedCase.optionB, "", ""]);
+    setOptionA(selectedCase.optionA);
+    setOptionB(selectedCase.optionB);
   }, [selectedCase]);
 
   useEffect(() => {
@@ -260,7 +248,6 @@ export default function HomePage() {
       .map((value) => value.trim())
       .filter(Boolean)
       .slice(0, 2);
-    const filteredOptions = options.map((item) => item.trim()).filter(Boolean);
 
     return {
       caseId,
@@ -269,7 +256,8 @@ export default function HomePage() {
       enabledModels,
       targetConfidence,
       scenarioText,
-      options: filteredOptions
+      optionA: optionA.trim(),
+      optionB: optionB.trim()
     };
   }, [
     caseId,
@@ -279,7 +267,8 @@ export default function HomePage() {
     enabledModels,
     targetConfidence,
     scenarioText,
-    options
+    optionA,
+    optionB
   ]);
 
   const runEvaluation = useCallback(async () => {
@@ -288,8 +277,8 @@ export default function HomePage() {
 
     try {
       const payload = buildPayload();
-      if (payload.options.length < 2) {
-        setErrors({ global: "選択肢は2つ以上入力してください。" });
+      if (!payload.optionA || !payload.optionB) {
+        setErrors({ global: "選択肢AとBは必須です。" });
         return;
       }
       const response = await fetch("/api/eval", {
@@ -326,12 +315,8 @@ export default function HomePage() {
     setIfPrimary(entry.input.ifConditions[0] ?? "");
     setIfSecondary(entry.input.ifConditions[1] ?? "");
     setScenarioText(entry.input.scenarioText);
-    setOptions([
-      entry.input.options[0] ?? "",
-      entry.input.options[1] ?? "",
-      entry.input.options[2] ?? "",
-      entry.input.options[3] ?? ""
-    ]);
+    setOptionA(entry.input.optionA);
+    setOptionB(entry.input.optionB);
     setEnabledModels(entry.input.enabledModels);
     setResults(entry.results);
   };
@@ -355,12 +340,8 @@ export default function HomePage() {
       }
       const data = (await response.json()) as ScenarioPayload;
       setScenarioText(data.scenarioText);
-      setOptions([
-        data.options[0] ?? "",
-        data.options[1] ?? "",
-        data.options[2] ?? "",
-        data.options[3] ?? ""
-      ]);
+      setOptionA(data.optionA);
+      setOptionB(data.optionB);
     } catch (error) {
       setErrors({ global: (error as Error).message });
     } finally {
@@ -488,22 +469,24 @@ export default function HomePage() {
                   />
                 </div>
                 <div className="grid gap-3 text-sm text-muted-foreground">
-                  {["A", "B", "C", "D"].map((label, index) => (
-                    <div key={label} className="space-y-1">
-                      <Label className="text-xs">選択肢{label}</Label>
-                      <Textarea
-                        value={options[index] ?? ""}
-                        onChange={(event) => {
-                          const next = [...options];
-                          next[index] = event.target.value;
-                          setOptions(next);
-                        }}
-                        className="min-h-[80px]"
-                      />
-                    </div>
-                  ))}
+                  <div className="space-y-1">
+                    <Label className="text-xs">選択肢A</Label>
+                    <Textarea
+                      value={optionA}
+                      onChange={(event) => setOptionA(event.target.value)}
+                      className="min-h-[90px]"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">選択肢B</Label>
+                    <Textarea
+                      value={optionB}
+                      onChange={(event) => setOptionB(event.target.value)}
+                      className="min-h-[90px]"
+                    />
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    選択肢は2つ以上入力してください。空欄は無視されます。
+                    選択肢A/Bは必須です。
                   </p>
                 </div>
               </div>

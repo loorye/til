@@ -25,7 +25,7 @@ const MODEL_RESULT_JSON_SCHEMA = {
   properties: {
     decision: {
       type: "string",
-      enum: ["A", "B", "C", "D"]
+      enum: ["A", "B"]
     },
     confidence: {
       type: "integer",
@@ -66,19 +66,21 @@ const DISABLED_RESULT: ModelResult = {
 
 function buildSystemPrompt() {
   return [
-    "あなたは思考実験に対して二択〜四択(A〜D)を選び、確信度(51-100整数)を返す。",
+    "あなたは思考実験に対して二択(A/B)を選び、確信度(51-100整数)を返す。",
     "確信度は正解率ではなく、その選択の妥当性に対する迷いの少なさ。",
     "出力は必ず指定JSONのみ。余計な文章は禁止。",
     "日本語で簡潔に。reasoning_summaryは1文、key_assumptionsは最大3つ。",
     "if条件が無い場合は what_changed_by_if を『初回』とする。",
-    "if条件がある場合は、what_changed_by_if にif条件で変わった判断点を短く書く。"
+    "if条件がある場合は、what_changed_by_if にif条件で変わった判断点を短く書く。",
+    "if条件がある場合は判断が変わり得るため、条件の影響を強めに反映する。"
   ].join("\n");
 }
 
 function buildUserPrompt({
   caseTitle,
   scenarioText,
-  options,
+  optionA,
+  optionB,
   principleId,
   ifConditions,
   targetConfidence,
@@ -86,7 +88,8 @@ function buildUserPrompt({
 }: {
   caseTitle: string;
   scenarioText: string;
-  options: string[];
+  optionA: string;
+  optionB: string;
   principleId: string;
   ifConditions: string[];
   targetConfidence: number;
@@ -99,20 +102,17 @@ function buildUserPrompt({
   const selected = PRINCIPLE_MAP.get(principleId as PrincipleId);
   const ifArray = JSON.stringify(ifConditions ?? []);
 
-  const optionLines = options
-    .map((option, index) => `選択肢${String.fromCharCode(65 + index)}: ${option}`)
-    .join("\n");
-
   return [
     `ケース名: ${caseTitle}`,
     `シナリオ: ${scenarioText}`,
-    optionLines,
+    `選択肢A: ${optionA}`,
+    `選択肢B: ${optionB}`,
     "判断原理一覧:",
     principleLines,
     `選択した判断原理: ${selected?.label ?? principleId}`,
     `if条件(配列): ${ifArray}`,
     ifConditions.length
-      ? "if条件があるため、what_changed_by_ifに変化点を簡潔に記載すること。"
+      ? "if条件があるため、判断への影響を強めに反映し、what_changed_by_ifに変化点を簡潔に記載すること。"
       : "if条件が無いため、what_changed_by_ifは『初回』とすること。",
     `目標確信度: ${targetConfidence}`,
     "出力JSONの形式は以下。余計な文は不要:",
@@ -193,17 +193,25 @@ function makeMockResult({
 async function runWithRetry({
   run,
   parser,
-  retryNote
+  retryNote,
+  modelName,
+  requestLog
 }: {
   run: (note?: string) => Promise<string>;
   parser: (text: string) => ModelResult;
   retryNote: string;
+  modelName: "gpt" | "gemini" | "claude";
+  requestLog: Record<string, unknown>;
 }) {
   try {
+    console.log(`[eval] ${modelName} request`, requestLog);
     const text = await run();
+    console.log(`[eval] ${modelName} response`, text);
     return { result: parser(text), error: null };
   } catch (error) {
+    console.log(`[eval] ${modelName} retry`, { retryNote });
     const text = await run(retryNote);
+    console.log(`[eval] ${modelName} response`, text);
     return { result: parser(text), error: error as Error };
   }
 }
@@ -232,7 +240,8 @@ export async function POST(request: Request) {
   const userPrompt = buildUserPrompt({
     caseTitle: selectedCase.title,
     scenarioText: input.scenarioText,
-    options: input.options,
+    optionA: input.optionA,
+    optionB: input.optionB,
     principleId: input.principleId,
     ifConditions: input.ifConditions,
     targetConfidence: input.targetConfidence
@@ -296,6 +305,33 @@ export async function POST(request: Request) {
   const geminiModel = process.env.GEMINI_MODEL ?? "gemini-1.0-pro";
 
   const errors: Record<string, string> = {};
+  const gptUserPrompt = buildUserPrompt({
+    caseTitle: selectedCase.title,
+    scenarioText: input.scenarioText,
+    optionA: input.optionA,
+    optionB: input.optionB,
+    principleId: input.principleId,
+    ifConditions: input.ifConditions,
+    targetConfidence: input.targetConfidence
+  });
+  const geminiUserPrompt = buildUserPrompt({
+    caseTitle: selectedCase.title,
+    scenarioText: input.scenarioText,
+    optionA: input.optionA,
+    optionB: input.optionB,
+    principleId: input.principleId,
+    ifConditions: input.ifConditions,
+    targetConfidence: input.targetConfidence
+  });
+  const claudeUserPrompt = buildUserPrompt({
+    caseTitle: selectedCase.title,
+    scenarioText: input.scenarioText,
+    optionA: input.optionA,
+    optionB: input.optionB,
+    principleId: input.principleId,
+    ifConditions: input.ifConditions,
+    targetConfidence: input.targetConfidence
+  });
 
   const [gptResult, geminiResult, claudeResult] = await Promise.all([
     enabledModels.has("gpt") && openaiKey
@@ -308,7 +344,8 @@ export async function POST(request: Request) {
               userPrompt: buildUserPrompt({
                 caseTitle: selectedCase.title,
                 scenarioText: input.scenarioText,
-                options: input.options,
+                optionA: input.optionA,
+                optionB: input.optionB,
                 principleId: input.principleId,
                 ifConditions: input.ifConditions,
                 targetConfidence: input.targetConfidence,
@@ -317,7 +354,13 @@ export async function POST(request: Request) {
               schema: MODEL_RESULT_JSON_SCHEMA
             }),
           parser: parseModelResult,
-          retryNote
+          retryNote,
+          modelName: "gpt",
+          requestLog: {
+            model: openaiModel,
+            systemPrompt,
+            userPrompt: gptUserPrompt
+          }
         })
       : Promise.resolve({
           result: {
@@ -343,7 +386,8 @@ export async function POST(request: Request) {
               userPrompt: buildUserPrompt({
                 caseTitle: selectedCase.title,
                 scenarioText: input.scenarioText,
-                options: input.options,
+                optionA: input.optionA,
+                optionB: input.optionB,
                 principleId: input.principleId,
                 ifConditions: input.ifConditions,
                 targetConfidence: input.targetConfidence,
@@ -351,7 +395,13 @@ export async function POST(request: Request) {
               })
             }),
           parser: parseModelResult,
-          retryNote
+          retryNote,
+          modelName: "gemini",
+          requestLog: {
+            model: geminiModel,
+            systemPrompt,
+            userPrompt: geminiUserPrompt
+          }
         })
       : Promise.resolve({
           result: {
@@ -376,7 +426,8 @@ export async function POST(request: Request) {
               userPrompt: buildUserPrompt({
                 caseTitle: selectedCase.title,
                 scenarioText: input.scenarioText,
-                options: input.options,
+                optionA: input.optionA,
+                optionB: input.optionB,
                 principleId: input.principleId,
                 ifConditions: input.ifConditions,
                 targetConfidence: input.targetConfidence,
@@ -385,7 +436,13 @@ export async function POST(request: Request) {
               region: bedrockRegion
             }),
           parser: parseModelResult,
-          retryNote
+          retryNote,
+          modelName: "claude",
+          requestLog: {
+            model: bedrockModel,
+            systemPrompt,
+            userPrompt: claudeUserPrompt
+          }
         })
       : Promise.resolve({
           result: {

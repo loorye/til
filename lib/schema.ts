@@ -7,11 +7,12 @@ export const InputSchema = z.object({
   enabledModels: z.array(z.enum(["gpt", "gemini", "claude"])).min(1),
   targetConfidence: z.number().int().min(51).max(100),
   scenarioText: z.string().min(1),
-  options: z.array(z.string().min(1)).min(2).max(4)
+  optionA: z.string().min(1),
+  optionB: z.string().min(1)
 });
 
 export const ModelResultSchema = z.object({
-  decision: z.enum(["A", "B", "C", "D"]),
+  decision: z.enum(["A", "B"]),
   confidence: z.number().int().min(51).max(100),
   key_assumptions: z.array(z.string()).max(3),
   reasoning_summary: z.string().min(1),
@@ -20,7 +21,8 @@ export const ModelResultSchema = z.object({
 
 export const ScenarioSchema = z.object({
   scenarioText: z.string().min(1),
-  options: z.array(z.string().min(1)).min(2).max(4)
+  optionA: z.string().min(1),
+  optionB: z.string().min(1)
 });
 
 export const ApiResponseSchema = z.object({
