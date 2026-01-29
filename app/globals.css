@@ -1,30 +1,134 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+JP:wght@300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 222.2 47.4% 11.2%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 222.2 84% 4.9%;
-  --radius: 0.75rem;
+  --background: 222 24% 8%;
+  --foreground: 42 15% 92%;
+  --card: 225 15% 12%;
+  --card-foreground: 42 15% 92%;
+  --popover: 225 15% 12%;
+  --popover-foreground: 42 15% 92%;
+  --primary: 221 83% 53%;
+  --primary-foreground: 42 15% 92%;
+  --secondary: 38 75% 55%;
+  --secondary-foreground: 222 24% 8%;
+  --muted: 222 15% 18%;
+  --muted-foreground: 42 8% 62%;
+  --accent: 38 75% 55%;
+  --accent-foreground: 222 24% 8%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 42 15% 92%;
+  --border: 222 15% 22%;
+  --input: 222 15% 22%;
+  --ring: 221 83% 53%;
+  --radius: 0.5rem;
+
+  --gpt-color: 59 100% 70%;
+  --gemini-color: 142 71% 45%;
+  --claude-color: 262 83% 58%;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   @apply bg-background text-foreground;
+  font-family: 'Inter', 'Noto Sans JP', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.6;
+  background: linear-gradient(135deg, hsl(222, 24%, 8%) 0%, hsl(225, 20%, 12%) 100%);
+  background-attachment: fixed;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Inter', 'Noto Sans JP', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.page-header {
+  position: relative;
+  overflow: hidden;
+}
+
+.page-header::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, hsla(221, 83%, 53%, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+  animation: float 20s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(-30px, 30px) rotate(5deg); }
+}
+
+.card-enhanced {
+  position: relative;
+  background: linear-gradient(145deg, hsl(225, 15%, 13%) 0%, hsl(225, 15%, 11%) 100%);
+  border: 1px solid hsl(222, 15%, 20%);
+  border-radius: var(--radius);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-enhanced:hover {
+  border-color: hsl(221, 40%, 35%);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.result-card-enter {
+  animation: slideInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.geometric-pattern {
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  background-image:
+    repeating-linear-gradient(45deg, transparent, transparent 20px, currentColor 20px, currentColor 21px),
+    repeating-linear-gradient(-45deg, transparent, transparent 20px, currentColor 20px, currentColor 21px);
+  pointer-events: none;
+}
+
+.badge-glow {
+  position: relative;
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px currentColor; }
+  50% { box-shadow: 0 0 16px currentColor, 0 0 24px currentColor; }
+}
+
+.scroll-fade-in {
+  animation: fadeIn 0.6s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

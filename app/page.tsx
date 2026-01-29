@@ -13,6 +13,7 @@ import { PRINCIPLES, PrincipleId } from "@/lib/principles";
 import { ApiResponse, ModelResult, ScenarioPayload } from "@/lib/schema";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -56,9 +57,9 @@ type HistoryEntry = {
 const HISTORY_STORAGE_KEY = "thought-experiment-history";
 
 const chartColors = {
-  gpt: "#2563eb",
-  gemini: "#16a34a",
-  claude: "#9333ea"
+  gpt: "hsl(59, 100%, 70%)",
+  gemini: "hsl(142, 71%, 45%)",
+  claude: "hsl(262, 83%, 58%)"
 };
 
 const modelLabels = {
@@ -66,6 +67,31 @@ const modelLabels = {
   gemini: "Gemini",
   claude: "Claude"
 };
+
+function ModelIcon({ modelId }: { modelId: "gpt" | "gemini" | "claude" }) {
+  const iconStyles = {
+    gpt: "bg-[hsl(59,100%,70%)]/20 text-[hsl(59,100%,70%)] border-[hsl(59,100%,70%)]/40",
+    gemini: "bg-[hsl(142,71%,45%)]/20 text-[hsl(142,71%,45%)] border-[hsl(142,71%,45%)]/40",
+    claude: "bg-[hsl(262,83%,58%)]/20 text-[hsl(262,83%,58%)] border-[hsl(262,83%,58%)]/40"
+  };
+
+  const labels = {
+    gpt: "G",
+    gemini: "G",
+    claude: "C"
+  };
+
+  return (
+    <div
+      className={cn(
+        "flex h-10 w-10 items-center justify-center rounded-lg border-2 font-bold text-lg",
+        iconStyles[modelId]
+      )}
+    >
+      {labels[modelId]}
+    </div>
+  );
+}
 
 function ConfidenceChart({
   value,
@@ -96,11 +122,11 @@ function ConfidenceChart({
             stroke="none"
           >
             <Cell fill={color} />
-            <Cell fill="#e5e7eb" />
+            <Cell fill="hsl(222, 15%, 22%)" />
           </Pie>
         </PieChart>
       </ResponsiveContainer>
-      <div className="absolute inset-0 flex items-center justify-center text-3xl font-bold text-slate-900">
+      <div className="absolute inset-0 flex items-center justify-center text-3xl font-bold text-foreground">
         {value}%
       </div>
     </div>
@@ -112,30 +138,36 @@ function ResultCard({
   color,
   result,
   error,
-  enabled
+  enabled,
+  modelId
 }: {
   title: string;
   color: string;
   result: ModelResult | null;
   error?: string;
   enabled: boolean;
+  modelId: "gpt" | "gemini" | "claude";
 }) {
   const decisionColor =
     result?.decision === "A"
-      ? "bg-emerald-100 text-emerald-700"
-      : "bg-indigo-100 text-indigo-700";
+      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+      : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40";
 
   return (
     <Card
       className={cn(
-        "h-full border-slate-200 shadow-none transition-opacity",
-        !enabled && "opacity-50"
+        "h-full card-enhanced result-card-enter transition-opacity",
+        !enabled && "opacity-40"
       )}
     >
-      <CardHeader className="border-b border-slate-200">
+      <div className="geometric-pattern"></div>
+      <CardHeader className="border-b border-border/50 relative z-10">
         <CardTitle className="flex items-center justify-between">
-          <span className="text-xl font-semibold">{title}</span>
-          <span className="text-sm font-medium text-muted-foreground">
+          <div className="flex items-center gap-3">
+            <ModelIcon modelId={modelId} />
+            <span className="text-xl font-semibold">{title}</span>
+          </div>
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             判断
           </span>
         </CardTitle>
@@ -143,13 +175,13 @@ function ResultCard({
           {!enabled ? "無効" : error ? "エラー発生" : "結果の要約"}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 relative z-10">
         {result && enabled ? (
           <>
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-3 py-2">
               <div
                 className={cn(
-                  "rounded-full px-6 py-2 text-3xl font-bold",
+                  "rounded-full px-6 py-2 text-3xl font-bold backdrop-blur-sm",
                   decisionColor
                 )}
               >
@@ -157,8 +189,8 @@ function ResultCard({
               </div>
               <ConfidenceChart value={result.confidence} color={color} />
             </div>
-            <div>
-              <p className="text-sm font-semibold">前提条件（最大3つ）</p>
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-secondary">前提条件（最大3つ）</p>
               <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-muted-foreground">
                 {result.key_assumptions.length ? (
                   result.key_assumptions.map((item, index) => (
@@ -169,15 +201,15 @@ function ResultCard({
                 )}
               </ul>
             </div>
-            <div>
-              <p className="text-sm font-semibold">判断の要約</p>
-              <p className="mt-1 text-sm text-muted-foreground">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-secondary">判断の要約</p>
+              <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
                 {result.reasoning_summary}
               </p>
             </div>
-            <div>
-              <p className="text-sm font-semibold">if条件による変化</p>
-              <p className="mt-1 text-sm text-muted-foreground">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-secondary">if条件による変化</p>
+              <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
                 {result.what_changed_by_if}
               </p>
             </div>
@@ -188,7 +220,7 @@ function ResultCard({
             ) : null}
           </>
         ) : !enabled ? (
-          <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-500">
+          <div className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-sm text-muted-foreground">
             チェックが外れているため無効です
           </div>
         ) : (
@@ -360,56 +392,68 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-white px-6 py-10 text-slate-900">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <header className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+    <div className="min-h-screen px-6 py-10 scroll-fade-in">
+      <div className="mx-auto flex max-w-7xl flex-col gap-8">
+        <header className="page-header flex flex-col gap-4 card-enhanced p-8">
+          <div className="geometric-pattern"></div>
+          <div className="flex flex-wrap items-center justify-between gap-4 relative z-10">
             <div>
-              <h1 className="text-2xl font-semibold">
-                思考実験 比較デモ（GPT / Gemini / Claude）
+              <h1 className="text-4xl font-semibold mb-2 bg-gradient-to-r from-foreground via-primary to-secondary bg-clip-text text-transparent">
+                思考実験 × 生成AI ワーク
               </h1>
-              <p className="text-sm text-muted-foreground">
-                現在のケース: {selectedCase.title}
+              <p className="text-base text-muted-foreground font-light">
+                GPT / Gemini / Claude
+              </p>
+              <p className="text-sm text-secondary mt-1">
+                現在のケース: <span className="font-medium">{selectedCase.title}</span>
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <span
                 className={cn(
-                  "rounded-full border px-3 py-1 text-xs font-semibold",
+                  "rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-wider badge-glow",
                   MOCK_MODE
-                    ? "border-amber-200 bg-amber-100/60 text-amber-700"
-                    : "border-emerald-200 bg-emerald-100/60 text-emerald-700"
+                    ? "border-amber-500/60 bg-amber-500/20 text-amber-300"
+                    : "border-emerald-500/60 bg-emerald-500/20 text-emerald-300"
                 )}
               >
                 {MOCK_MODE ? "MOCK_MODE" : "LIVE_MODE"}
               </span>
-              <Button onClick={runEvaluation} disabled={loading}>
-                {loading ? "実行中..." : "実行"}
+              <Button onClick={runEvaluation} disabled={loading} className="bg-primary hover:bg-primary/80 text-primary-foreground font-medium">
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    実行中...
+                  </>
+                ) : (
+                  "実行"
+                )}
               </Button>
             </div>
           </div>
           {errors?.global ? (
-            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive relative z-10">
               {errors.global}
             </div>
           ) : null}
         </header>
 
         <div className="grid gap-6 lg:grid-cols-[0.8fr_2.2fr]">
-          <Card className="border-slate-200 shadow-none">
-            <CardHeader className="border-b border-slate-200">
+          <Card className="card-enhanced">
+            <div className="geometric-pattern"></div>
+            <CardHeader className="border-b border-border/50 relative z-10">
               <CardTitle>入力フォーム</CardTitle>
               <CardDescription>判断原理とif条件を設定</CardDescription>
             </CardHeader>
-            <CardContent className="max-h-[70vh] space-y-6 overflow-y-auto pr-2">
-              <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <Label>有効にするモデル</Label>
+            <CardContent className="max-h-[70vh] space-y-6 overflow-y-auto pr-2 relative z-10">
+              <div className="space-y-3 rounded-xl border border-border/60 bg-muted/30 px-4 py-3 backdrop-blur-sm">
+                <Label className="text-xs uppercase tracking-wide font-semibold text-secondary">有効にするモデル</Label>
                 <div className="grid gap-2 text-sm">
                   {(Object.keys(modelLabels) as Array<keyof typeof modelLabels>).map(
                     (modelId) => (
                       <label
                         key={modelId}
-                        className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2"
+                        className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-card/50 px-3 py-2 transition-all hover:border-primary/40 hover:bg-card/70"
                       >
                         <span className="text-base font-semibold">
                           {modelLabels[modelId]}
@@ -418,6 +462,7 @@ export default function HomePage() {
                           type="checkbox"
                           checked={enabledModels.includes(modelId)}
                           onChange={() => toggleModel(modelId)}
+                          className="w-4 h-4 accent-primary"
                         />
                       </label>
                     )
@@ -428,17 +473,17 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="space-y-2">
-                <Label>ケース選択</Label>
+                <Label className="text-xs uppercase tracking-wide font-semibold text-secondary">ケース選択</Label>
                 <div className="grid gap-2">
                   {CASES.map((item) => (
                     <button
                       key={item.id}
                       onClick={() => setCaseId(item.id)}
                       className={cn(
-                        "rounded-lg border px-4 py-2 text-left text-sm transition-colors",
+                        "rounded-lg border px-4 py-2 text-left text-sm transition-all",
                         caseId === item.id
-                          ? "border-slate-900 bg-slate-900 text-white"
-                          : "border-slate-200 bg-white hover:border-slate-300"
+                          ? "border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                          : "border-border bg-card/50 hover:border-primary/40 hover:bg-card/70"
                       )}
                       type="button"
                     >
@@ -448,12 +493,19 @@ export default function HomePage() {
                 </div>
                 <Button
                   variant="outline"
-                  className="mt-2 w-full border-slate-200"
+                  className="mt-2 w-full border-border hover:bg-muted/50"
                   type="button"
                   onClick={generateRandomScenario}
                   disabled={randomLoading}
                 >
-                  {randomLoading ? "生成中..." : "ランダム生成（思考実験）"}
+                  {randomLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      生成中...
+                    </>
+                  ) : (
+                    "ランダム生成（思考実験）"
+                  )}
                 </Button>
               </div>
 
@@ -537,14 +589,21 @@ export default function HomePage() {
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">結果比較</h2>
+              <h2 className="text-3xl font-semibold">結果比較</h2>
               <Button
                 variant="outline"
-                className="border-slate-200"
+                className="border-border hover:bg-muted/50"
                 onClick={runEvaluation}
                 disabled={loading}
               >
-                再実行（同一入力）
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    実行中...
+                  </>
+                ) : (
+                  "再実行（同一入力）"
+                )}
               </Button>
             </div>
             <div className="grid gap-4 md:grid-cols-3">
@@ -554,6 +613,7 @@ export default function HomePage() {
                 result={results?.gpt ?? null}
                 error={errors?.gpt}
                 enabled={enabledModels.includes("gpt")}
+                modelId="gpt"
               />
               <ResultCard
                 title={modelLabels.gemini}
@@ -561,6 +621,7 @@ export default function HomePage() {
                 result={results?.gemini ?? null}
                 error={errors?.gemini}
                 enabled={enabledModels.includes("gemini")}
+                modelId="gemini"
               />
               <ResultCard
                 title={modelLabels.claude}
@@ -568,21 +629,23 @@ export default function HomePage() {
                 result={results?.claude ?? null}
                 error={errors?.claude}
                 enabled={enabledModels.includes("claude")}
+                modelId="claude"
               />
             </div>
           </div>
         </div>
 
-        <Card className="border-slate-200 shadow-none">
-          <CardHeader className="border-b border-slate-200">
+        <Card className="card-enhanced">
+          <div className="geometric-pattern"></div>
+          <CardHeader className="border-b border-border/50 relative z-10">
             <CardTitle>履歴</CardTitle>
             <CardDescription>最新の実行結果が上に表示されます</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 relative z-10">
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
-                className="border-slate-200"
+                className="border-border hover:bg-muted/50"
                 onClick={() => setHistory([])}
                 disabled={history.length === 0}
               >
@@ -590,22 +653,22 @@ export default function HomePage() {
               </Button>
               <Button
                 variant="outline"
-                className="border-slate-200"
+                className="border-border hover:bg-muted/50"
                 onClick={exportHistory}
                 disabled={history.length === 0}
               >
                 JSONエクスポート
               </Button>
             </div>
-            <div className="overflow-x-auto rounded-lg border">
+            <div className="overflow-x-auto rounded-lg border border-border">
               <table className="min-w-full text-sm">
-                <thead className="bg-slate-50 text-left">
+                <thead className="bg-muted/50 text-left">
                   <tr>
-                    <th className="px-3 py-2">実行時刻</th>
-                    <th className="px-3 py-2">ケース</th>
-                    <th className="px-3 py-2">判断原理</th>
-                    <th className="px-3 py-2">if条件</th>
-                    <th className="px-3 py-2">結果</th>
+                    <th className="px-3 py-3 text-xs uppercase tracking-wide font-semibold text-secondary">実行時刻</th>
+                    <th className="px-3 py-3 text-xs uppercase tracking-wide font-semibold text-secondary">ケース</th>
+                    <th className="px-3 py-3 text-xs uppercase tracking-wide font-semibold text-secondary">判断原理</th>
+                    <th className="px-3 py-3 text-xs uppercase tracking-wide font-semibold text-secondary">if条件</th>
+                    <th className="px-3 py-3 text-xs uppercase tracking-wide font-semibold text-secondary">結果</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -619,7 +682,7 @@ export default function HomePage() {
                     history.map((entry) => (
                       <tr
                         key={entry.id}
-                        className="cursor-pointer border-t hover:bg-slate-50"
+                        className="cursor-pointer border-t border-border hover:bg-muted/30 transition-colors"
                         onClick={() => restoreFromHistory(entry)}
                       >
                         <td className="px-3 py-2 whitespace-nowrap">
@@ -638,7 +701,7 @@ export default function HomePage() {
                         <td className="px-3 py-2">
                           {entry.input.ifConditions.join(" / ") || "なし"}
                         </td>
-                        <td className="px-3 py-2">
+                        <td className="px-3 py-2 font-mono text-xs">
                           GPT:{entry.results.gpt.decision}({
                             entry.results.gpt.confidence
                           }) / Gemini:{entry.results.gemini.decision}({
