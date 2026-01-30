@@ -33,6 +33,89 @@ import {
 
 const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_MODE === "true";
 
+type AchievementCheck = {
+  achieved: boolean;
+  message: string;
+  type: 'success' | 'near' | 'none';
+};
+
+function checkWorkGoal({
+  workId,
+  initialResult,
+  currentResult
+}: {
+  workId: 1 | 2 | 3 | null;
+  initialResult: ModelResult | null;
+  currentResult: ModelResult;
+}): AchievementCheck | null {
+  if (!workId || !initialResult) {
+    return null;
+  }
+
+  switch (workId) {
+    case 1: {
+      const confidenceDiff = currentResult.confidence - initialResult.confidence;
+      if (confidenceDiff >= 20) {
+        return {
+          achieved: true,
+          message: `確信度+${confidenceDiff}%達成！`,
+          type: 'success'
+        };
+      } else if (confidenceDiff >= 15) {
+        return {
+          achieved: false,
+          message: `あと+${20 - confidenceDiff}%で目標達成！`,
+          type: 'near'
+        };
+      }
+      return {
+        achieved: false,
+        message: `現在+${confidenceDiff}%（目標: +20%）`,
+        type: 'none'
+      };
+    }
+
+    case 2: {
+      if (initialResult.decision !== currentResult.decision) {
+        return {
+          achieved: true,
+          message: `${initialResult.decision}→${currentResult.decision} 回答反転成功！`,
+          type: 'success'
+        };
+      }
+      return {
+        achieved: false,
+        message: `現在の判断: ${currentResult.decision}（初回と同じ）`,
+        type: 'none'
+      };
+    }
+
+    case 3: {
+      const distance = Math.abs(currentResult.confidence - 51);
+      if (distance <= 1) {
+        return {
+          achieved: true,
+          message: `51%に最接近！(${currentResult.confidence}%)`,
+          type: 'success'
+        };
+      } else if (distance <= 3) {
+        return {
+          achieved: false,
+          message: `あと${distance}%で目標達成！`,
+          type: 'near'
+        };
+      }
+      return {
+        achieved: false,
+        message: `現在51%から${distance}%離れています`,
+        type: 'none'
+      };
+    }
+  }
+
+  return null;
+}
+
 type HistoryEntry = {
   id: string;
   timestamp: string;
@@ -129,7 +212,9 @@ function ResultCard({
   error,
   enabled,
   modelId,
-  animationDelay
+  animationDelay,
+  initialResult,
+  workId
 }: {
   title: string;
   color: string;
@@ -138,7 +223,16 @@ function ResultCard({
   enabled: boolean;
   modelId: "gpt" | "gemini" | "claude";
   animationDelay?: string;
+  initialResult?: ModelResult | null;
+  workId?: 1 | 2 | 3 | null;
 }) {
+  const achievement = result && initialResult && workId
+    ? checkWorkGoal({
+        workId,
+        initialResult,
+        currentResult: result
+      })
+    : null;
   return (
     <Card
       className={cn(
@@ -165,6 +259,15 @@ function ResultCard({
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
+        {achievement && achievement.message && (
+          <div className={cn(
+            "achievement-banner",
+            `achievement-banner--${achievement.type}`
+          )}>
+            {achievement.achieved ? '🎉 ' : '📊 '}
+            {achievement.message}
+          </div>
+        )}
         {result && enabled ? (
           <>
             <div className="flex flex-col items-center gap-4 py-2">
@@ -244,6 +347,7 @@ function ResultCard({
 }
 
 export default function HomePage() {
+  const [activeWorkId, setActiveWorkId] = useState<1 | 2 | 3 | null>(1);
   const [caseId, setCaseId] = useState<CaseId>("trolley");
   const [principleId, setPrincipleId] = useState<PrincipleId>("none");
   const [ifPrimary, setIfPrimary] = useState("");
@@ -256,6 +360,7 @@ export default function HomePage() {
     Array<"gpt" | "gemini" | "claude">
   >(["gpt", "gemini", "claude"]);
   const [results, setResults] = useState<ApiResponse["results"] | null>(null);
+  const [initialResults, setInitialResults] = useState<ApiResponse["results"] | null>(null);
   const [errors, setErrors] = useState<Record<string, string> | null>(null);
   const [loading, setLoading] = useState(false);
   const [randomLoading, setRandomLoading] = useState(false);
@@ -263,11 +368,31 @@ export default function HomePage() {
 
   const selectedCase = CASE_MAP.get(caseId) ?? CASES[0];
 
+  const availableCases = useMemo(() => {
+    return CASES.filter(c => {
+      if (activeWorkId === null) {
+        return true;
+      }
+      return c.workshop?.workId === activeWorkId;
+    });
+  }, [activeWorkId]);
+
   useEffect(() => {
     setScenarioText(selectedCase.scenarioText);
     setOptionA(selectedCase.optionA);
     setOptionB(selectedCase.optionB);
+    setInitialResults(null);
+    setResults(null);
   }, [selectedCase]);
+
+  useEffect(() => {
+    if (availableCases.length > 0) {
+      const firstCase = availableCases[0];
+      if (!availableCases.find(c => c.id === caseId)) {
+        setCaseId(firstCase.id);
+      }
+    }
+  }, [activeWorkId, availableCases, caseId]);
 
   useEffect(() => {
     const stored = localStorage.getItem(HISTORY_STORAGE_KEY);
@@ -334,6 +459,15 @@ export default function HomePage() {
       }
 
       const data = (await response.json()) as ApiResponse;
+
+      const ifConditions = [ifPrimary, ifSecondary]
+        .map((value) => value.trim())
+        .filter(Boolean);
+
+      if (ifConditions.length === 0) {
+        setInitialResults(data.results);
+      }
+
       setResults(data.results);
       setErrors((data as { errors?: Record<string, string> }).errors ?? null);
 
@@ -414,7 +548,7 @@ export default function HomePage() {
                 思考実験 × 生成AI
               </h1>
               <p className="text-base text-muted-foreground mt-1 font-light">
-                倫理的判断の比較ワークショップ
+                倫理的判断の比較
               </p>
               <div className="flex items-center gap-3 mt-3">
                 <span
@@ -457,6 +591,34 @@ export default function HomePage() {
           )}
         </header>
 
+        {/* Work Tabs */}
+        <div className="work-tabs">
+          <button
+            onClick={() => setActiveWorkId(1)}
+            className={cn("work-tab", activeWorkId === 1 && "work-tab--active")}
+          >
+            ワーク1: 確信度UP
+          </button>
+          <button
+            onClick={() => setActiveWorkId(2)}
+            className={cn("work-tab", activeWorkId === 2 && "work-tab--active")}
+          >
+            ワーク2: 回答反転
+          </button>
+          <button
+            onClick={() => setActiveWorkId(3)}
+            className={cn("work-tab", activeWorkId === 3 && "work-tab--active")}
+          >
+            ワーク3: 51%接近
+          </button>
+          <button
+            onClick={() => setActiveWorkId(null)}
+            className={cn("work-tab", activeWorkId === null && "work-tab--active")}
+          >
+            フリー練習
+          </button>
+        </div>
+
         {/* Main Content */}
         <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
           {/* Input Panel */}
@@ -497,8 +659,13 @@ export default function HomePage() {
               {/* Case Selection */}
               <div className="space-y-3">
                 <Label className="section-label">ケース選択</Label>
+                {selectedCase.workshop?.description && (
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {selectedCase.workshop.description}
+                  </p>
+                )}
                 <div className="grid gap-2">
-                  {CASES.map((item) => (
+                  {availableCases.map((item) => (
                     <button
                       key={item.id}
                       onClick={() => setCaseId(item.id)}
@@ -628,6 +795,29 @@ export default function HomePage() {
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
+
+                {/* Hints */}
+                {selectedCase?.workshop?.hints && selectedCase.workshop.hints.length > 0 && (
+                  <Accordion type="single" collapsible className="mt-4">
+                    <AccordionItem value="hints" className="border-none">
+                      <AccordionTrigger className="text-xs text-muted-foreground hover:no-underline py-2">
+                        💡 ヒントを見る
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="space-y-3">
+                          {selectedCase.workshop.hints.map((hint, index) => (
+                            <div key={index} className="hint-card">
+                              <span className="hint-badge">
+                                {hint.level === 'basic' ? '基本' : hint.level === 'intermediate' ? '中級' : '上級'}ヒント
+                              </span>
+                              <p className="text-sm">{hint.text}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -665,6 +855,8 @@ export default function HomePage() {
                 enabled={enabledModels.includes("gpt")}
                 modelId="gpt"
                 animationDelay="150ms"
+                initialResult={initialResults?.gpt ?? null}
+                workId={selectedCase.workshop?.workId}
               />
               <ResultCard
                 title={modelLabels.gemini}
@@ -674,6 +866,8 @@ export default function HomePage() {
                 enabled={enabledModels.includes("gemini")}
                 modelId="gemini"
                 animationDelay="200ms"
+                initialResult={initialResults?.gemini ?? null}
+                workId={selectedCase.workshop?.workId}
               />
               <ResultCard
                 title={modelLabels.claude}
@@ -683,6 +877,8 @@ export default function HomePage() {
                 enabled={enabledModels.includes("claude")}
                 modelId="claude"
                 animationDelay="250ms"
+                initialResult={initialResults?.claude ?? null}
+                workId={selectedCase.workshop?.workId}
               />
             </div>
           </div>

@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -67,7 +65,7 @@ html {
 
 body {
   @apply bg-background text-foreground antialiased;
-  font-family: 'Hiragino Kaku Gothic ProN', 'DM Sans', 'Noto Sans JP', 'Hiragino Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 1.7;
   background-image:
     radial-gradient(ellipse 80% 50% at 50% -20%, hsl(35 40% 95% / 0.8), transparent),
@@ -77,7 +75,7 @@ body {
 
 /* Editorial Typography */
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Crimson Pro', 'Noto Sans JP', serif;
+  font-family: 'Hiragino Mincho ProN', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', serif;
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.3;
@@ -229,7 +227,7 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Crimson Pro', serif;
+  font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
   font-weight: 600;
   font-size: 1.25rem;
   letter-spacing: -0.02em;
@@ -266,7 +264,7 @@ h1, h2, h3, h4, h5, h6 {
   min-width: 64px;
   padding: 0.5rem 1.5rem;
   border-radius: 100px;
-  font-family: 'Crimson Pro', serif;
+  font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
   font-size: 1.75rem;
   font-weight: 600;
   letter-spacing: 0.05em;
@@ -300,7 +298,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .confidence-ring__number {
-  font-family: 'Crimson Pro', serif;
+  font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
   font-size: 2rem;
   font-weight: 600;
   line-height: 1;
@@ -317,7 +315,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Section Labels */
 .section-label {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
   font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -332,7 +330,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .input-group label {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
   font-size: 0.75rem;
   font-weight: 500;
   text-transform: uppercase;
@@ -345,7 +343,7 @@ input[type="text"],
 input[type="number"],
 textarea,
 select {
-  font-family: 'DM Sans', 'Noto Sans JP', sans-serif;
+  font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
 }
 
 textarea {
@@ -468,7 +466,7 @@ textarea {
 }
 
 .history-table th {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
   font-size: 0.65rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -522,7 +520,7 @@ textarea {
   gap: 0.25rem;
   padding: 0.125rem 0.5rem;
   border-radius: 4px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -626,4 +624,80 @@ input[type="checkbox"] {
   height: 48px;
   margin: 0 auto 1rem;
   opacity: 0.4;
+}
+
+/* ワークタブ */
+.work-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid hsl(var(--border));
+  margin-bottom: 1.5rem;
+}
+
+.work-tab {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+}
+
+.work-tab:hover {
+  color: hsl(var(--foreground));
+}
+
+.work-tab--active {
+  border-bottom-color: hsl(var(--primary));
+  color: hsl(var(--primary));
+}
+
+/* 達成バナー */
+.achievement-banner {
+  background: linear-gradient(135deg, hsl(158 60% 95%) 0%, hsl(158 60% 90%) 100%);
+  border: 1px solid hsl(158 60% 75%);
+  color: hsl(158 80% 25%);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  animation: slideUp 0.3s ease;
+}
+
+.achievement-banner--near {
+  background: linear-gradient(135deg, hsl(38 60% 95%) 0%, hsl(38 60% 90%) 100%);
+  border-color: hsl(38 60% 75%);
+  color: hsl(38 80% 30%);
+}
+
+.achievement-banner--none {
+  background: linear-gradient(135deg, hsl(220 10% 95%) 0%, hsl(220 10% 90%) 100%);
+  border-color: hsl(220 10% 75%);
+  color: hsl(220 10% 40%);
+}
+
+/* ヒントカード */
+.hint-card {
+  background: hsl(var(--muted) / 0.5);
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.hint-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: hsl(var(--primary));
 }
