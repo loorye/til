@@ -2,8 +2,16 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
+  // デバッグログ（本番環境でのトラブルシューティング用）
+  console.log("[auth] middleware invoked", {
+    path: request.nextUrl.pathname,
+    disableAuth: process.env.DISABLE_AUTH,
+    hasAuthHeader: !!request.headers.get("authorization"),
+  });
+
   // 認証が無効化されている場合はスキップ
   if (process.env.DISABLE_AUTH === "true") {
+    console.log("[auth] authentication disabled");
     return NextResponse.next();
   }
 
@@ -17,12 +25,20 @@ export function middleware(request: NextRequest) {
     const validUser = process.env.AUTH_USERNAME || "admin";
     const validPassword = process.env.AUTH_PASSWORD || "password";
 
+    console.log("[auth] authentication attempt", {
+      providedUser: user,
+      expectedUser: validUser,
+      passwordMatch: pwd === validPassword,
+    });
+
     if (user === validUser && pwd === validPassword) {
+      console.log("[auth] authentication successful");
       return NextResponse.next();
     }
   }
 
   // 認証失敗時は401を返す
+  console.log("[auth] authentication failed - returning 401");
   return new NextResponse("Authentication required", {
     status: 401,
     headers: {
