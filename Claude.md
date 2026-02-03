@@ -409,11 +409,268 @@ echo $AWS_SESSION_TOKEN
 - 判断の一貫性スコア（同一入力での再現性）
 - モデル間の判断差異の統計分析
 
+## AWS Amplifyへのデプロイ
+
+### デプロイ設定
+
+本プロジェクトはAWS Amplifyでのホスティングに対応している。
+
+#### 設定ファイル
+
+**amplify.yml**
+```yaml
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
+```
+
+**next.config.js**
+```javascript
+const nextConfig = {
+  reactStrictMode: true,
+  output: 'standalone',
+  images: {
+    unoptimized: true
+  }
+};
+```
+
+#### 設定のポイント
+
+1. **output: 'standalone'**: Next.jsのスタンドアロンビルドを有効化
+   - ビルド成果物のサイズを削減
+   - デプロイの高速化
+
+2. **images.unoptimized: true**: 画像最適化を無効化
+   - Amplifyでは独自の画像最適化を使用
+   - Next.js Image Optimizationとの競合を回避
+
+3. **npm ci**: `npm install`ではなく`npm ci`を使用
+   - package-lock.jsonからの厳密なインストール
+   - ビルドの再現性を確保
+
+#### 環境変数の管理
+
+Amplifyコンソールで以下の環境変数を設定：
+
+**認証設定（セキュリティ）:**
+- `AUTH_USERNAME`: Basic認証のユーザー名
+- `AUTH_PASSWORD`: Basic認証のパスワード（強力なものを設定）
+- `DISABLE_AUTH`: 認証を無効化する場合のみ`true`（本番では非推奨）
+
+**必須（本番モード）:**
+- `OPENAI_API_KEY`
+- `GOOGLE_API_KEY`
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+
+**推奨（初回デプロイ時）:**
+- `MOCK_MODE=true`: デモモードで動作確認
+- `NEXT_PUBLIC_MOCK_MODE=true`: クライアント側でもデモモード
+
+**注意事項:**
+- 環境変数は暗号化されて保存される
+- 変更後は再デプロイが必要
+- `NEXT_PUBLIC_`プレフィックスはクライアント側に公開される
+- Basic認証はHTTPS環境でのみ安全（Amplifyは自動的にHTTPS）
+
+#### デプロイの流れ
+
+1. GitHubリポジトリと連携
+2. ブランチを選択（通常はmain/master）
+3. `amplify.yml`が自動検出される
+4. 環境変数を設定
+5. ビルド＆デプロイを実行
+6. 提供されたURLで動作確認
+
+#### パフォーマンス最適化
+
+**キャッシュ戦略:**
+- `node_modules`と`.next/cache`をキャッシュ
+- ビルド時間を大幅に短縮（初回: ~3分 → 2回目以降: ~1分）
+
+**並列処理:**
+- 3つのAIモデルを`Promise.all`で並列実行
+- レスポンスタイムを最小化
+
+### トラブルシューティング（Amplify固有）
+
+#### ビルドエラー
+
+**症状**: `Module not found` エラー
+
+**原因**:
+- package-lock.jsonが最新でない
+- ローカルとAmplifyでNode.jsバージョンが異なる
+
+**解決策**:
+```bash
+# ローカルで再生成
+rm -rf node_modules package-lock.json
+npm install
+git add package-lock.json
+git commit -m "Update package-lock.json"
+git push
+```
+
+#### 環境変数が反映されない
+
+**症状**: APIキーエラー、undefined変数
+
+**原因**:
+- 環境変数設定後に再デプロイしていない
+- 変数名のtypo
+
+**解決策**:
+1. Amplifyコンソールで環境変数を確認
+2. 「再デプロイ」を実行
+3. ビルドログで環境変数の読み込みを確認
+
+#### AWS Bedrock認証エラー（Amplify環境）
+
+**症状**: `403 Forbidden` エラー
+
+**原因**:
+- IAMユーザーの権限不足
+- リージョン設定ミス
+
+**解決策**:
+1. IAMポリシーに`bedrock:InvokeModel`を追加
+2. `BEDROCK_REGION`環境変数を確認（例: `us-east-1`）
+3. Bedrockが有効なリージョンか確認
+
+### Basic認証の実装
+
+#### 概要
+
+本プロジェクトでは、Next.jsミドルウェアを使用したBasic認証を実装している。これにより、デプロイ後のアプリケーションへの不正アクセスを防止できる。
+
+#### 実装の仕組み
+
+**middleware.ts**
+```typescript
+export function middleware(request: NextRequest) {
+  // DISABLE_AUTH=trueの場合は認証スキップ
+  if (process.env.DISABLE_AUTH === "true") {
+    return NextResponse.next();
+  }
+
+  const basicAuth = request.headers.get("authorization");
+
+  if (basicAuth) {
+    const authValue = basicAuth.split(" ")[1];
+    const [user, pwd] = atob(authValue).split(":");
+
+    const validUser = process.env.AUTH_USERNAME || "admin";
+    const validPassword = process.env.AUTH_PASSWORD || "password";
+
+    if (user === validUser && pwd === validPassword) {
+      return NextResponse.next();
+    }
+  }
+
+  // 認証失敗時は/api/authにリダイレクト
+  return NextResponse.rewrite(new URL("/api/auth", request.url));
+}
+```
+
+**app/api/auth/route.ts**
+```typescript
+export async function GET() {
+  return new NextResponse("Authentication required", {
+    status: 401,
+    headers: {
+      "WWW-Authenticate": 'Basic realm="Secure Area"',
+    },
+  });
+}
+```
+
+#### 認証の流れ
+
+1. ユーザーがアプリにアクセス
+2. ミドルウェアが認証ヘッダーをチェック
+3. 認証情報がない、または無効な場合：
+   - 401レスポンスを返す
+   - ブラウザがBasic認証ダイアログを表示
+4. 正しい認証情報が入力されると、アクセスを許可
+
+#### セキュリティ上の考慮事項
+
+**推奨設定:**
+- 強力なパスワードを使用（12文字以上、大小英数字記号の組み合わせ）
+- パスワードは環境変数で管理（コードにハードコードしない）
+- HTTPS環境でのみ使用（AmplifyはデフォルトでHTTPS）
+
+**制限事項:**
+- Basic認証は簡易的なセキュリティ対策
+- より高度なセキュリティが必要な場合は、NextAuth.jsやAWS Cognitoの使用を検討
+- ワークショップデモのような用途には十分
+
+#### ローカル開発時の設定
+
+**.env（ローカル）:**
+```bash
+DISABLE_AUTH=true  # 認証を無効化して開発効率化
+```
+
+**本番環境（Amplify）:**
+```bash
+AUTH_USERNAME=your_username
+AUTH_PASSWORD=your_strong_password
+# DISABLE_AUTHは設定しない（認証を有効化）
+```
+
+### デプロイ後の運用
+
+#### MOCKモードの切り替え
+
+**デモ時:**
+```
+MOCK_MODE=true
+NEXT_PUBLIC_MOCK_MODE=true
+```
+- 外部API不要
+- 安定した動作
+- コスト削減
+
+**本番時:**
+```
+MOCK_MODE=false
+NEXT_PUBLIC_MOCK_MODE=false
+```
+- 実際のAI判断を取得
+- リアルタイムな比較が可能
+
+#### モニタリング
+
+Amplifyコンソールで確認できる項目:
+- ビルド履歴とログ
+- デプロイ状況
+- アクセスログ（CloudWatch連携）
+- エラーレート
+
 ## 参考リソース
 
 - [Claude API Documentation (Anthropic)](https://docs.anthropic.com/claude/reference/getting-started-with-the-api)
 - [AWS Bedrock - Anthropic Claude Models](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters-anthropic-claude-messages.html)
 - [Structured Outputs with Claude](https://docs.anthropic.com/claude/docs/structured-outputs)
+- [AWS Amplify Hosting](https://docs.aws.amazon.com/amplify/latest/userguide/welcome.html)
+- [Next.js Deployment on Amplify](https://docs.aws.amazon.com/amplify/latest/userguide/deploy-nextjs-app.html)
 
 ## まとめ
 
