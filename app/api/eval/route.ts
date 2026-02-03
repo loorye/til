@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { CASE_MAP } from "@/lib/cases";
-import { PRINCIPLES, PRINCIPLE_MAP } from "@/lib/principles";
+import { PRINCIPLES, PRINCIPLE_MAP, PrincipleId } from "@/lib/principles";
 import {
   ApiResponseSchema,
   InputSchema,
@@ -89,7 +89,7 @@ function buildUserPrompt({
     (item) => `- ${item.label}: ${item.description} (id: ${item.id})`
   ).join("\n");
 
-  const selected = PRINCIPLE_MAP.get(principleId);
+  const selected = PRINCIPLE_MAP.get(principleId as PrincipleId);
   const ifArray = JSON.stringify(ifConditions ?? []);
 
   return [
@@ -166,7 +166,7 @@ function makeMockResult({
   const confidence = clampConfidence(targetConfidence + bias + careBias + ifBoost);
 
   return {
-    decision: baseDecisionMap[caseId]?.[baseDecision] ?? "A",
+    decision: (baseDecisionMap[caseId]?.[baseDecision] ?? "A") as "A" | "B",
     confidence,
     key_assumptions: ifConditions.length
       ? ifConditions.slice(0, 3)
