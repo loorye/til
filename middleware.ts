@@ -9,7 +9,6 @@ export function middleware(request: NextRequest) {
 
   // 認証情報の取得
   const basicAuth = request.headers.get("authorization");
-  const url = request.nextUrl;
 
   if (basicAuth) {
     const authValue = basicAuth.split(" ")[1];
@@ -23,9 +22,13 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  url.pathname = "/api/auth";
-
-  return NextResponse.rewrite(url);
+  // 認証失敗時は401を返す
+  return new NextResponse("Authentication required", {
+    status: 401,
+    headers: {
+      "WWW-Authenticate": 'Basic realm="Secure Area"',
+    },
+  });
 }
 
 export const config = {
