@@ -1,5 +1,4 @@
 import { Sha256 } from "@aws-crypto/sha256-js";
-import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { HttpRequest } from "@aws-sdk/protocol-http";
 import { SignatureV4 } from "@aws-sdk/signature-v4";
 
@@ -33,8 +32,23 @@ export async function callAnthropic({
     ]
   });
 
+  // カスタム環境変数から認証情報を取得
+  const accessKeyId = process.env.BEDROCK_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.BEDROCK_SECRET_ACCESS_KEY;
+  const sessionToken = process.env.BEDROCK_SESSION_TOKEN;
+
+  if (!accessKeyId || !secretAccessKey) {
+    throw new Error("BEDROCK_ACCESS_KEY_ID and BEDROCK_SECRET_ACCESS_KEY must be set");
+  }
+
+  const credentials = {
+    accessKeyId,
+    secretAccessKey,
+    ...(sessionToken && { sessionToken })
+  };
+
   const signer = new SignatureV4({
-    credentials: defaultProvider(),
+    credentials,
     region,
     service,
     sha256: Sha256

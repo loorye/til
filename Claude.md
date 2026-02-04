@@ -21,11 +21,21 @@ GPT、Gemini、Claudeの3つのAIモデルを同一プロンプト・同一JSON�
 **1. 認証（lib/providers/anthropic.ts）**
 
 ```typescript
-import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { SignatureV4 } from "@aws-sdk/signature-v4";
 
+// カスタム環境変数から認証情報を取得（AWS_プレフィックスは予約されているため）
+const accessKeyId = process.env.BEDROCK_ACCESS_KEY_ID;
+const secretAccessKey = process.env.BEDROCK_SECRET_ACCESS_KEY;
+const sessionToken = process.env.BEDROCK_SESSION_TOKEN;
+
+const credentials = {
+  accessKeyId,
+  secretAccessKey,
+  ...(sessionToken && { sessionToken })
+};
+
 const signer = new SignatureV4({
-  credentials: defaultProvider(),
+  credentials,
   region,
   service: "bedrock",
   sha256: Sha256
@@ -33,7 +43,8 @@ const signer = new SignatureV4({
 ```
 
 - AWS SigV4署名を使用した認証
-- `defaultProvider()`により、環境変数、IAMロール、プロファイルなど複数の認証ソースに対応
+- カスタム環境変数 `BEDROCK_ACCESS_KEY_ID` / `BEDROCK_SECRET_ACCESS_KEY` を使用（`AWS_` プレフィックスは多くのプラットフォームで予約されているため）
+- オプションで `BEDROCK_SESSION_TOKEN` をサポート（AssumeRole時）
 
 **2. リクエストパラメータ**
 
@@ -339,19 +350,21 @@ temperature: 0.1
 **症状**: `Bedrock Claude error: 403 Forbidden`
 
 **原因**:
-- AWS認証情報の不足または期限切れ
-- IAMロールに`bedrock:InvokeModel`権限がない
+- Bedrock認証情報の不足または期限切れ
+- IAMユーザーに`bedrock:InvokeModel`権限がない
 
 **解決策**:
 ```bash
-# 環境変数の確認
-echo $AWS_ACCESS_KEY_ID
-echo $AWS_SECRET_ACCESS_KEY
-echo $AWS_SESSION_TOKEN
+# 環境変数の確認（注: BEDROCK_プレフィックスを使用）
+echo $BEDROCK_ACCESS_KEY_ID
+echo $BEDROCK_SECRET_ACCESS_KEY
+echo $BEDROCK_SESSION_TOKEN
 
 # IAMポリシーの確認
 # bedrock:InvokeModel 権限が必要
 ```
+
+**重要**: `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` は多くのプラットフォーム（AWS Amplify、Vercelなど）で予約されているため、代わりに `BEDROCK_ACCESS_KEY_ID` / `BEDROCK_SECRET_ACCESS_KEY` を使用してください。
 
 ### 2. JSONパースエラー
 
@@ -475,8 +488,8 @@ Amplifyコンソールで以下の環境変数を設定：
 **必須（本番モード）:**
 - `OPENAI_API_KEY`
 - `GOOGLE_API_KEY`
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
+- `BEDROCK_ACCESS_KEY_ID`（注: `AWS_`プレフィックスは予約されているため使用不可）
+- `BEDROCK_SECRET_ACCESS_KEY`
 
 **推奨（初回デプロイ時）:**
 - `MOCK_MODE=true`: デモモードで動作確認

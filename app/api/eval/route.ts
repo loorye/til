@@ -287,6 +287,15 @@ export async function POST(request: Request) {
       }
     };
 
+    const responseValidation = ApiResponseSchema.safeParse(responseBody);
+    if (!responseValidation.success) {
+      console.error("[eval] Mock mode validation error:", responseValidation.error);
+      return NextResponse.json(
+        { error: responseValidation.error.flatten() },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(responseBody);
   }
 
