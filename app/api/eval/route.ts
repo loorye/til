@@ -11,6 +11,7 @@ import {
 import { callOpenAI } from "@/lib/providers/openai";
 import { callAnthropic } from "@/lib/providers/anthropic";
 import { callGemini } from "@/lib/providers/gemini";
+import { getParameter, PARAMETER_PATHS } from "@/lib/utils/parameter-store";
 
 const MODEL_RESULT_JSON_SCHEMA = {
   type: "object",
@@ -299,10 +300,18 @@ export async function POST(request: Request) {
     return NextResponse.json(responseBody);
   }
 
-  const openaiKey = process.env.OPENAI_API_KEY;
-  const bedrockRegion = process.env.BEDROCK_REGION ?? "us-east-1";
-  const geminiKey = process.env.GOOGLE_API_KEY;
+  // Parameter Storeから認証情報を取得（環境変数フォールバック付き）
+  const openaiKey = await getParameter(
+    PARAMETER_PATHS.OPENAI_API_KEY,
+    "OPENAI_API_KEY"
+  );
+  const geminiKey = await getParameter(
+    PARAMETER_PATHS.GOOGLE_API_KEY,
+    "GOOGLE_API_KEY"
+  );
 
+  // モデル設定は環境変数から取得（Parameter Storeに入れる必要はない）
+  const bedrockRegion = process.env.BEDROCK_REGION ?? "us-east-1";
   const openaiModel = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
   const bedrockModel =
     process.env.BEDROCK_MODEL_ID ?? "anthropic.claude-3-5-sonnet-20240620-v1:0";

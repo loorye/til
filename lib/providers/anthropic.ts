@@ -1,6 +1,7 @@
 import { Sha256 } from "@aws-crypto/sha256-js";
 import { HttpRequest } from "@aws-sdk/protocol-http";
 import { SignatureV4 } from "@aws-sdk/signature-v4";
+import { getParameter, PARAMETER_PATHS } from "@/lib/utils/parameter-store";
 
 export async function callAnthropic({
   model,
@@ -32,13 +33,24 @@ export async function callAnthropic({
     ]
   });
 
-  // カスタム環境変数から認証情報を取得
-  const accessKeyId = process.env.BEDROCK_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.BEDROCK_SECRET_ACCESS_KEY;
-  const sessionToken = process.env.BEDROCK_SESSION_TOKEN;
+  // Parameter Storeから認証情報を取得（環境変数フォールバック付き）
+  const accessKeyId = await getParameter(
+    PARAMETER_PATHS.BEDROCK_ACCESS_KEY_ID,
+    "BEDROCK_ACCESS_KEY_ID"
+  );
+  const secretAccessKey = await getParameter(
+    PARAMETER_PATHS.BEDROCK_SECRET_ACCESS_KEY,
+    "BEDROCK_SECRET_ACCESS_KEY"
+  );
+  const sessionToken = await getParameter(
+    PARAMETER_PATHS.BEDROCK_SESSION_TOKEN,
+    "BEDROCK_SESSION_TOKEN"
+  );
 
   if (!accessKeyId || !secretAccessKey) {
-    throw new Error("BEDROCK_ACCESS_KEY_ID and BEDROCK_SECRET_ACCESS_KEY must be set");
+    throw new Error(
+      "BEDROCK_ACCESS_KEY_ID and BEDROCK_SECRET_ACCESS_KEY must be set in Parameter Store or env vars"
+    );
   }
 
   const credentials = {

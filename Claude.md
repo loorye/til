@@ -422,6 +422,346 @@ echo $BEDROCK_SESSION_TOKEN
 - 判断の一貫性スコア（同一入力での再現性）
 - モデル間の判断差異の統計分析
 
+## AWS Parameter Storeの設定
+
+### 概要
+
+本プロジェクトでは、APIキーやAWS認証情報を**AWS Systems Manager Parameter Store**から動的に取得する仕組みを実装している。これにより：
+
+- **セキュリティ向上**: 環境変数にハードコードせず、AWS IAMで厳密に管理
+- **運用の柔軟性**: 認証情報の変更時にアプリの再デプロイ不要
+- **コスト最適化**: キャッシング機構により高速アクセス（TTL: 5分）
+- **マルチ環境対応**: 環境変数フォールバックでローカル開発も可能
+
+### 実装の仕組み
+
+**lib/utils/parameter-store.ts**
+
+```typescript
+import { SSMClient, GetParametersCommand } from "@aws-sdk/client-ssm";
+
+// メモリキャッシュ（TTL: 5分）
+const cache = new Map<string, ParameterCache>();
+
+export async function getParameter(
+  parameterName: string,
+  fallbackEnvKey?: string
+): Promise<string | undefined> {
+  // 1. 環境変数フォールバック（ローカル開発用）
+  if (fallbackEnvKey && process.env[fallbackEnvKey]) {
+    return process.env[fallbackEnvKey];
+  }
+
+  // 2. キャッシュチェック（5分TTL）
+  const cached = cache.get(parameterName);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    return cached.value;
+  }
+
+  // 3. Parameter Storeから取得
+  const client = new SSMClient({ region });
+  const response = await client.send(new GetParametersCommand({
+    Names: [parameterName],
+    WithDecryption: true
+  }));
+
+  // キャッシュに保存
+  cache.set(parameterName, { value, timestamp: Date.now() });
+  return value;
+}
+```
+
+**主要な特徴:**
+
+1. **メモリキャッシング**: 5分間キャッシュして、Parameter Storeへのアクセス回数を削減
+2. **環境変数フォールバック**: ローカル開発時は環境変数を優先的に使用
+3. **SecureString対応**: `WithDecryption: true`で暗号化されたパラメータも取得可能
+4. **一括取得**: `getParameters`関数で複数パラメータを効率的に取得
+
+### Parameter Storeへの登録手順
+
+#### 1. AWS CLIでパラメータを登録
+
+```bash
+# OpenAI API Key
+aws ssm put-parameter \
+  --name "/ai-workshop/openai-api-key" \
+  --value "sk-xxxxxxxxxxxxxxxxxxxxxxxx" \
+  --type "SecureString" \
+  --description "OpenAI API Key for AI Workshop" \
+  --region us-east-1
+
+# Google API Key
+aws ssm put-parameter \
+  --name "/ai-workshop/google-api-key" \
+  --value "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXX" \
+  --type "SecureString" \
+  --description "Google API Key for AI Workshop" \
+  --region us-east-1
+
+# Bedrock Access Key ID
+aws ssm put-parameter \
+  --name "/ai-workshop/bedrock-access-key-id" \
+  --value "AKIAXXXXXXXXXXXXXXXX" \
+  --type "SecureString" \
+  --description "AWS Bedrock Access Key ID" \
+  --region us-east-1
+
+# Bedrock Secret Access Key
+aws ssm put-parameter \
+  --name "/ai-workshop/bedrock-secret-access-key" \
+  --value "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  --type "SecureString" \
+  --description "AWS Bedrock Secret Access Key" \
+  --region us-east-1
+
+# Bedrock Session Token（オプション、AssumeRole時のみ）
+aws ssm put-parameter \
+  --name "/ai-workshop/bedrock-session-token" \
+  --value "FwoGZXIvYXdzEBMaDXXXXXXXXXXXXXXXXX..." \
+  --type "SecureString" \
+  --description "AWS Bedrock Session Token (optional)" \
+  --region us-east-1
+```
+
+#### 2. AWSコンソールでパラメータを登録
+
+1. **AWS Systems Manager**コンソールを開く
+2. 左メニューから「パラメータストア」を選択
+3. 「パラメータの作成」をクリック
+4. 以下の設定でパラメータを作成：
+
+| 項目 | 値 |
+|------|-----|
+| 名前 | `/ai-workshop/openai-api-key` |
+| タイプ | `SecureString` |
+| KMS キーソース | `マイカレントアカウント` |
+| KMS キー ID | `alias/aws/ssm` (デフォルト) |
+| 値 | `sk-xxxxxxxxxxxxxxxxxxxxxxxx` |
+
+5. 他のパラメータも同様に作成
+
+#### 3. パラメータの確認
+
+```bash
+# パラメータ一覧を表示
+aws ssm describe-parameters --region us-east-1
+
+# 特定のパラメータの値を取得（復号化）
+aws ssm get-parameter \
+  --name "/ai-workshop/openai-api-key" \
+  --with-decryption \
+  --region us-east-1
+```
+
+### IAM権限の設定
+
+#### Amplify実行ロールに必要な権限
+
+Amplify（またはEC2、Lambda等）の実行ロールに以下のIAMポリシーをアタッチ：
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetParameter",
+        "ssm:GetParameters"
+      ],
+      "Resource": [
+        "arn:aws:ssm:us-east-1:YOUR_ACCOUNT_ID:parameter/ai-workshop/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt"
+      ],
+      "Resource": [
+        "arn:aws:kms:us-east-1:YOUR_ACCOUNT_ID:key/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": "ssm.us-east-1.amazonaws.com"
+        }
+      }
+    }
+  ]
+}
+```
+
+**重要なポイント:**
+
+1. **最小権限の原則**: `/ai-workshop/*`のみアクセス可能
+2. **KMS復号化権限**: SecureStringの復号化にKMS権限が必要
+3. **リージョン指定**: Parameter Storeはリージョナルサービス
+
+#### Amplifyでの設定手順
+
+1. **Amplifyコンソール**を開く
+2. 該当アプリを選択
+3. 「アプリ設定」→「一般設定」
+4. 「サービスロール」を確認
+5. IAMコンソールで該当ロールに上記ポリシーをアタッチ
+
+### ローカル開発環境の設定
+
+Parameter Storeを使用せず、環境変数フォールバックでローカル開発が可能：
+
+**.env.local**
+```bash
+# ローカル開発用（環境変数フォールバック）
+OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
+GOOGLE_API_KEY=AIzaSyXXXXXXXXXXXXXXXXXXXXXXXX
+BEDROCK_ACCESS_KEY_ID=AKIAXXXXXXXXXXXXXXXX
+BEDROCK_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+BEDROCK_SESSION_TOKEN=（オプション）
+
+# モックモードでAPI不要の場合
+MOCK_MODE=true
+NEXT_PUBLIC_MOCK_MODE=true
+```
+
+**動作の優先順位:**
+
+1. 環境変数（存在する場合）
+2. Parameter Store（キャッシュがあればキャッシュ）
+3. Parameter Storeから取得
+
+### パフォーマンス最適化
+
+#### キャッシング戦略
+
+```typescript
+// 5分間キャッシュ
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+// API呼び出し回数の削減
+// - 初回: Parameter Store → キャッシュに保存
+// - 2回目以降（5分以内）: キャッシュから即座に返却
+// - 5分経過後: Parameter Store → キャッシュ更新
+```
+
+**効果:**
+- レスポンス時間: 50-100ms → 1ms未満（キャッシュヒット時）
+- Parameter Store API呼び出し: 1回/5分（大幅削減）
+- コスト: Parameter StoreのAPI呼び出し料金を削減
+
+#### 一括取得による最適化
+
+```typescript
+// 非効率: 個別に3回取得
+const openaiKey = await getParameter("/ai-workshop/openai-api-key");
+const geminiKey = await getParameter("/ai-workshop/google-api-key");
+const bedrockKey = await getParameter("/ai-workshop/bedrock-access-key-id");
+
+// 効率的: 1回で3つ取得（10個まで可能）
+const params = await getParameters([
+  "/ai-workshop/openai-api-key",
+  "/ai-workshop/google-api-key",
+  "/ai-workshop/bedrock-access-key-id"
+]);
+```
+
+### トラブルシューティング
+
+#### 1. Parameter Storeアクセスエラー
+
+**症状**: `AccessDeniedException: User is not authorized to perform: ssm:GetParameter`
+
+**原因**: IAM権限不足
+
+**解決策**:
+```bash
+# 実行ロールの確認
+aws sts get-caller-identity
+
+# IAMポリシーの確認
+aws iam get-role-policy \
+  --role-name amplify-role-name \
+  --policy-name parameter-store-access
+```
+
+#### 2. KMS復号化エラー
+
+**症状**: `KMS.AccessDeniedException: The ciphertext refers to a customer master key that does not exist`
+
+**原因**: KMS復号化権限がない
+
+**解決策**:
+- IAMロールに`kms:Decrypt`権限を追加
+- KMSキーのポリシーでIAMロールに復号化を許可
+
+#### 3. キャッシュの問題
+
+**症状**: Parameter Storeで値を更新したが反映されない
+
+**原因**: メモリキャッシュが5分間保持される
+
+**解決策**:
+- 5分待つ（自動的にキャッシュクリア）
+- アプリを再デプロイしてプロセス再起動
+- 緊急時は`clearCache()`関数を呼び出し（テスト用）
+
+#### 4. リージョンの不一致
+
+**症状**: `ParameterNotFound: Parameter /ai-workshop/... not found`
+
+**原因**: Parameter StoreとAmplifyのリージョンが異なる
+
+**解決策**:
+```bash
+# Parameter Storeのリージョンを確認
+aws ssm describe-parameters --region us-east-1
+
+# 環境変数でリージョンを明示
+AWS_REGION=us-east-1
+BEDROCK_REGION=us-east-1
+```
+
+### セキュリティのベストプラクティス
+
+1. **SecureStringの使用**: 必ず`SecureString`タイプでパラメータを作成
+2. **最小権限の原則**: `/ai-workshop/*`のみアクセス可能にする
+3. **パラメータの命名規則**: プロジェクトごとにプレフィックスを統一
+4. **監査ログの有効化**: CloudTrailでParameter Storeアクセスをログ記録
+5. **定期的なローテーション**: APIキーは定期的に更新
+6. **環境分離**: 本番/ステージング/開発で異なるパラメータパスを使用
+
+### パラメータのライフサイクル管理
+
+#### 更新手順
+
+```bash
+# パラメータの更新（上書き）
+aws ssm put-parameter \
+  --name "/ai-workshop/openai-api-key" \
+  --value "sk-new-key-xxxxxxxxxxxxxxxx" \
+  --type "SecureString" \
+  --overwrite \
+  --region us-east-1
+```
+
+#### 削除手順
+
+```bash
+# パラメータの削除
+aws ssm delete-parameter \
+  --name "/ai-workshop/openai-api-key" \
+  --region us-east-1
+```
+
+#### バージョン管理
+
+```bash
+# パラメータの履歴を確認
+aws ssm get-parameter-history \
+  --name "/ai-workshop/openai-api-key" \
+  --region us-east-1
+```
+
 ## AWS Amplifyへのデプロイ
 
 ### デプロイ設定
@@ -478,6 +818,19 @@ const nextConfig = {
 
 #### 環境変数の管理
 
+**推奨アプローチ: Parameter Store + 環境変数の併用**
+
+本プロジェクトでは、APIキーなどの機密情報は**AWS Parameter Store**で管理し、設定値は環境変数で管理することを推奨：
+
+**Parameter Storeで管理（機密情報）:**
+- OpenAI API Key: `/ai-workshop/openai-api-key`
+- Google API Key: `/ai-workshop/google-api-key`
+- Bedrock Access Key ID: `/ai-workshop/bedrock-access-key-id`
+- Bedrock Secret Access Key: `/ai-workshop/bedrock-secret-access-key`
+- Bedrock Session Token: `/ai-workshop/bedrock-session-token`（オプション）
+
+**環境変数で管理（設定値）:**
+
 Amplifyコンソールで以下の環境変数を設定：
 
 **認証設定（セキュリティ）:**
@@ -485,19 +838,30 @@ Amplifyコンソールで以下の環境変数を設定：
 - `AUTH_PASSWORD`: Basic認証のパスワード（強力なものを設定）
 - `DISABLE_AUTH`: 認証を無効化する場合のみ`true`（本番では非推奨）
 
-**必須（本番モード）:**
+**モデル設定:**
+- `BEDROCK_REGION`: AWS Bedrockのリージョン（デフォルト: `us-east-1`）
+- `OPENAI_MODEL`: OpenAIモデル名（デフォルト: `gpt-4o-mini`）
+- `BEDROCK_MODEL_ID`: Bedrockモデル ID（デフォルト: `anthropic.claude-3-5-sonnet-20240620-v1:0`）
+- `GEMINI_MODEL`: Geminiモデル名（デフォルト: `gemini-1.0-pro`）
+- `AWS_REGION`: Parameter Storeのリージョン（デフォルト: `us-east-1`）
+
+**動作モード（初回デプロイ時）:**
+- `MOCK_MODE=true`: デモモードで動作確認
+- `NEXT_PUBLIC_MOCK_MODE=true`: クライアント側でもデモモード
+
+**フォールバック用（Parameter Store未使用時のみ）:**
+
+Parameter Storeを使用しない場合（非推奨）、以下の環境変数をAmplifyに設定：
 - `OPENAI_API_KEY`
 - `GOOGLE_API_KEY`
 - `BEDROCK_ACCESS_KEY_ID`（注: `AWS_`プレフィックスは予約されているため使用不可）
 - `BEDROCK_SECRET_ACCESS_KEY`
 
-**推奨（初回デプロイ時）:**
-- `MOCK_MODE=true`: デモモードで動作確認
-- `NEXT_PUBLIC_MOCK_MODE=true`: クライアント側でもデモモード
-
 **注意事項:**
-- 環境変数は暗号化されて保存される
-- 変更後は再デプロイが必要
+- Parameter Store使用時は環境変数にAPIキーを設定する必要はない
+- 環境変数とParameter Storeの両方がある場合、環境変数が優先される（フォールバック機能）
+- 環境変数の変更後は再デプロイが必要
+- Parameter Storeの変更は5分以内にキャッシュから自動反映される（再デプロイ不要）
 - `NEXT_PUBLIC_`プレフィックスはクライアント側に公開される
 - Basic認証はHTTPS環境でのみ安全（Amplifyは自動的にHTTPS）
 

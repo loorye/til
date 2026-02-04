@@ -29,19 +29,77 @@ npm run dev
 
 ## APIキー設定方法
 
-`.env` に以下を設定してください（ClaudeはAWS Bedrock経由、AWS SDKの認証情報プロバイダチェーンを利用）。
+### 方法1: 環境変数（ローカル開発）
+
+`.env` に以下を設定してください：
 
 ```bash
+# APIキー
 OPENAI_API_KEY=your_openai_key
 GOOGLE_API_KEY=your_google_key
-AWS_ACCESS_KEY_ID=your_aws_access_key_id
-AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
-AWS_SESSION_TOKEN=your_aws_session_token
+BEDROCK_ACCESS_KEY_ID=your_aws_access_key_id
+BEDROCK_SECRET_ACCESS_KEY=your_aws_secret_access_key
+BEDROCK_SESSION_TOKEN=your_aws_session_token  # オプション
+
+# モデル設定
 OPENAI_MODEL=gpt-4o-mini
 BEDROCK_REGION=us-east-1
 BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20240620-v1:0
 GEMINI_MODEL=gemini-1.0-pro
+
+# 認証設定（ローカルでは無効化推奨）
+DISABLE_AUTH=true
 ```
+
+### 方法2: AWS Parameter Store（本番環境推奨）
+
+本番環境では、APIキーを**AWS Systems Manager Parameter Store**で管理することを推奨します。
+
+#### セットアップスクリプトを使用
+
+```bash
+# セットアップスクリプトを実行（対話形式）
+./scripts/setup-parameter-store.sh
+```
+
+#### 手動で設定
+
+```bash
+# OpenAI API Key
+aws ssm put-parameter \
+  --name "/ai-workshop/openai-api-key" \
+  --value "sk-xxxxxxxxxxxxxxxxxxxxxxxx" \
+  --type "SecureString" \
+  --region us-east-1
+
+# Google API Key
+aws ssm put-parameter \
+  --name "/ai-workshop/google-api-key" \
+  --value "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXX" \
+  --type "SecureString" \
+  --region us-east-1
+
+# Bedrock認証情報
+aws ssm put-parameter \
+  --name "/ai-workshop/bedrock-access-key-id" \
+  --value "AKIAXXXXXXXXXXXXXXXX" \
+  --type "SecureString" \
+  --region us-east-1
+
+aws ssm put-parameter \
+  --name "/ai-workshop/bedrock-secret-access-key" \
+  --value "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
+  --type "SecureString" \
+  --region us-east-1
+```
+
+**Parameter Storeの利点:**
+- セキュリティ向上（IAMで厳密に管理）
+- 認証情報の変更時に再デプロイ不要
+- キャッシング機構により高速アクセス（TTL: 5分）
+- 環境変数フォールバックでローカル開発も可能
+
+詳細は[CLAUDE.md](./CLAUDE.md)の「AWS Parameter Storeの設定」セクションを参照してください。
 
 ## 当日の運用手順
 
@@ -105,25 +163,66 @@ frontend:
 
 Amplifyコンソールの「環境変数」セクションで以下を設定：
 
-**認証設定（推奨）:**
+#### Parameter Store使用時（推奨）
+
+**認証設定（必須）:**
 - `AUTH_USERNAME`: Basic認証のユーザー名（例: `admin`）
 - `AUTH_PASSWORD`: Basic認証のパスワード（強力なパスワードを設定）
-- `DISABLE_AUTH`: 認証を無効化する場合は `true`（非推奨）
 
-**必須（MOCK_MODE=false の場合）:**
-- `OPENAI_API_KEY`: OpenAI APIキー
-- `GOOGLE_API_KEY`: Google APIキー（Gemini用）
-- `AWS_ACCESS_KEY_ID`: AWS認証情報
-- `AWS_SECRET_ACCESS_KEY`: AWS認証情報
+**AWS設定（必須）:**
+- `AWS_REGION`: Parameter Storeのリージョン（例: `us-east-1`）
+- `BEDROCK_REGION`: AWS Bedrockのリージョン（例: `us-east-1`）
 
-**オプション:**
-- `MOCK_MODE`: `true`（デモモード）/ `false`（本番モード）
+**動作モード（オプション）:**
+- `MOCK_MODE`: `true`（デモモード）/ `false`（本番モード、デフォルト）
 - `NEXT_PUBLIC_MOCK_MODE`: `true` / `false`（クライアント側）
-- `AWS_SESSION_TOKEN`: AWS一時認証トークン（必要な場合）
+
+**モデル設定（オプション）:**
 - `OPENAI_MODEL`: `gpt-4o-mini`（デフォルト）
-- `BEDROCK_REGION`: `us-east-1`（デフォルト）
 - `BEDROCK_MODEL_ID`: `anthropic.claude-3-5-sonnet-20240620-v1:0`
 - `GEMINI_MODEL`: `gemini-1.0-pro`
+
+**重要:** Parameter Store使用時は、APIキーを環境変数に設定する必要はありません。Parameter Storeから自動的に取得されます。
+
+#### 環境変数のみ使用時（非推奨）
+
+Parameter Storeを使用しない場合、以下も追加で設定：
+
+- `OPENAI_API_KEY`: OpenAI APIキー
+- `GOOGLE_API_KEY`: Google APIキー（Gemini用）
+- `BEDROCK_ACCESS_KEY_ID`: AWS Bedrock認証情報
+- `BEDROCK_SECRET_ACCESS_KEY`: AWS Bedrock認証情報
+- `BEDROCK_SESSION_TOKEN`: AWS一時認証トークン（オプション）
+
+#### IAM権限の設定
+
+Parameter Store使用時は、Amplifyの実行ロールに以下の権限を付与：
+
+1. Amplifyコンソール → アプリ → 「一般設定」→ 「サービスロール」を確認
+2. IAMコンソールで該当ロールに以下のポリシーをアタッチ：
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["ssm:GetParameter", "ssm:GetParameters"],
+      "Resource": "arn:aws:ssm:us-east-1:YOUR_ACCOUNT_ID:parameter/ai-workshop/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["kms:Decrypt"],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": "ssm.us-east-1.amazonaws.com"
+        }
+      }
+    }
+  ]
+}
+```
 
 ### 4. デプロイ
 
@@ -169,7 +268,15 @@ Amplifyコンソールの「環境変数」セクションで以下を設定：
 
 ### APIキーの保護
 
-- OpenAI、Google、AWSのAPIキーは環境変数で管理
+**推奨: AWS Parameter Store使用**
+- 本番環境では**AWS Parameter Store**で管理（SecureString）
+- IAMポリシーで最小権限の原則を適用
+- KMS暗号化による追加のセキュリティ層
+- CloudTrailで監査ログを記録
+- 認証情報の変更時に再デプロイ不要
+
+**ローカル開発: 環境変数使用**
+- `.env`ファイルは絶対にGitにコミットしない（`.gitignore`で除外）
 - 定期的にキーをローテーション
 - 不要になったキーは即座に無効化
 - APIキーの利用状況をモニタリング
