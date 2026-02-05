@@ -53,49 +53,41 @@ DISABLE_AUTH=true
 
 ### 方法2: AWS Parameter Store（本番環境推奨）
 
-本番環境では、APIキーを**AWS Systems Manager Parameter Store**で管理することを推奨します。
+本番環境では、**全ての設定値**を**AWS Systems Manager Parameter Store**で管理することを推奨します。
 
-#### セットアップスクリプトを使用
+#### セットアップスクリプトを使用（推奨）
 
 ```bash
-# セットアップスクリプトを実行（対話形式）
+# セットアップスクリプトを実行（対話形式で全てのパラメータを登録）
 ./scripts/setup-parameter-store.sh
 ```
 
-#### 手動で設定
+このスクリプトで以下を登録できます：
+- **機密情報（SecureString）**: APIキー、Basic認証情報
+- **設定値（String）**: モデル名、リージョン、モックモード、認証無効化フラグ
 
-```bash
-# OpenAI API Key
-aws ssm put-parameter \
-  --name "/ai-workshop/openai-api-key" \
-  --value "sk-xxxxxxxxxxxxxxxxxxxxxxxx" \
-  --type "SecureString" \
-  --region us-east-1
+#### 登録されるパラメータ
 
-# Google API Key
-aws ssm put-parameter \
-  --name "/ai-workshop/google-api-key" \
-  --value "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXX" \
-  --type "SecureString" \
-  --region us-east-1
+**機密情報（SecureString）:**
+- `/ai-workshop/openai-api-key` - OpenAI APIキー
+- `/ai-workshop/google-api-key` - Google APIキー
+- `/ai-workshop/bedrock-access-key-id` - Bedrock認証情報
+- `/ai-workshop/bedrock-secret-access-key` - Bedrock認証情報
+- `/ai-workshop/bedrock-session-token` - Bedrockセッショントークン（オプション）
+- `/ai-workshop/auth-username` - Basic認証ユーザー名
+- `/ai-workshop/auth-password` - Basic認証パスワード
 
-# Bedrock認証情報
-aws ssm put-parameter \
-  --name "/ai-workshop/bedrock-access-key-id" \
-  --value "AKIAXXXXXXXXXXXXXXXX" \
-  --type "SecureString" \
-  --region us-east-1
-
-aws ssm put-parameter \
-  --name "/ai-workshop/bedrock-secret-access-key" \
-  --value "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
-  --type "SecureString" \
-  --region us-east-1
-```
+**設定値（String）:**
+- `/ai-workshop/openai-model` - OpenAIモデル名
+- `/ai-workshop/gemini-model` - Geminiモデル名
+- `/ai-workshop/bedrock-model-id` - BedrockモデルID
+- `/ai-workshop/bedrock-region` - Bedrockリージョン
+- `/ai-workshop/mock-mode` - モックモード（true/false）
+- `/ai-workshop/disable-auth` - 認証無効化（true/false）
 
 **Parameter Storeの利点:**
 - セキュリティ向上（IAMで厳密に管理）
-- 認証情報の変更時に再デプロイ不要
+- 設定変更時に再デプロイ不要（5分以内に自動反映）
 - キャッシング機構により高速アクセス（TTL: 5分）
 - 環境変数フォールバックでローカル開発も可能
 
@@ -165,34 +157,47 @@ Amplifyコンソールの「環境変数」セクションで以下を設定：
 
 #### Parameter Store使用時（推奨）
 
-**認証設定（必須）:**
-- `AUTH_USERNAME`: Basic認証のユーザー名（例: `admin`）
-- `AUTH_PASSWORD`: Basic認証のパスワード（強力なパスワードを設定）
+**最小限の環境変数のみ設定:**
 
-**AWS設定（必須）:**
+**必須:**
 - `AWS_REGION`: Parameter Storeのリージョン（例: `us-east-1`）
-- `BEDROCK_REGION`: AWS Bedrockのリージョン（例: `us-east-1`）
 
-**動作モード（オプション）:**
-- `MOCK_MODE`: `true`（デモモード）/ `false`（本番モード、デフォルト）
+**オプション（クライアント側での表示用）:**
 - `NEXT_PUBLIC_MOCK_MODE`: `true` / `false`（クライアント側）
 
-**モデル設定（オプション）:**
-- `OPENAI_MODEL`: `gpt-4o-mini`（デフォルト）
-- `BEDROCK_MODEL_ID`: `anthropic.claude-3-5-sonnet-20240620-v1:0`
-- `GEMINI_MODEL`: `gemini-1.0-pro`
-
-**重要:** Parameter Store使用時は、APIキーを環境変数に設定する必要はありません。Parameter Storeから自動的に取得されます。
+**重要:**
+- **Parameter Store使用時は、ほとんどの設定を環境変数に設定する必要はありません**
+- APIキー、モデル名、認証情報など、全てParameter Storeから自動的に取得されます
+- Parameter Storeで設定を変更した場合、5分以内に自動反映されます（再デプロイ不要）
+- 環境変数が設定されている場合、Parameter Storeよりも優先されます（フォールバック機能）
 
 #### 環境変数のみ使用時（非推奨）
 
-Parameter Storeを使用しない場合、以下も追加で設定：
+Parameter Storeを使用しない場合、以下の全てを環境変数に設定：
 
+**APIキー（機密情報）:**
 - `OPENAI_API_KEY`: OpenAI APIキー
 - `GOOGLE_API_KEY`: Google APIキー（Gemini用）
 - `BEDROCK_ACCESS_KEY_ID`: AWS Bedrock認証情報
 - `BEDROCK_SECRET_ACCESS_KEY`: AWS Bedrock認証情報
 - `BEDROCK_SESSION_TOKEN`: AWS一時認証トークン（オプション）
+
+**認証設定:**
+- `AUTH_USERNAME`: Basic認証のユーザー名
+- `AUTH_PASSWORD`: Basic認証のパスワード
+- `DISABLE_AUTH`: 認証無効化（`true` / `false`）
+
+**モデル設定:**
+- `OPENAI_MODEL`: `gpt-4o-mini`
+- `GEMINI_MODEL`: `gemini-1.0-pro`
+- `BEDROCK_MODEL_ID`: `anthropic.claude-3-5-sonnet-20240620-v1:0`
+- `BEDROCK_REGION`: `us-east-1`
+
+**動作モード:**
+- `MOCK_MODE`: `true` / `false`
+- `NEXT_PUBLIC_MOCK_MODE`: `true` / `false`
+
+**注意:** 環境変数での管理は、設定変更のたびに再デプロイが必要になるため推奨しません。
 
 #### IAM権限の設定
 

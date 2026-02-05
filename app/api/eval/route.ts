@@ -251,7 +251,12 @@ export async function POST(request: Request) {
     }
   });
 
-  const mockMode = process.env.MOCK_MODE === "true";
+  // MOCKモードの取得（Parameter Store → 環境変数フォールバック）
+  const mockModeValue = await getParameter(
+    PARAMETER_PATHS.MOCK_MODE,
+    "MOCK_MODE"
+  );
+  const mockMode = mockModeValue === "true";
   const enabledModels = new Set(input.enabledModels);
 
   if (mockMode) {
@@ -310,12 +315,19 @@ export async function POST(request: Request) {
     "GOOGLE_API_KEY"
   );
 
-  // モデル設定は環境変数から取得（Parameter Storeに入れる必要はない）
-  const bedrockRegion = process.env.BEDROCK_REGION ?? "us-east-1";
-  const openaiModel = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+  // モデル設定もParameter Storeから取得（環境変数フォールバック付き）
+  const bedrockRegion =
+    (await getParameter(PARAMETER_PATHS.BEDROCK_REGION, "BEDROCK_REGION")) ??
+    "us-east-1";
+  const openaiModel =
+    (await getParameter(PARAMETER_PATHS.OPENAI_MODEL, "OPENAI_MODEL")) ??
+    "gpt-4o-mini";
   const bedrockModel =
-    process.env.BEDROCK_MODEL_ID ?? "anthropic.claude-3-5-sonnet-20240620-v1:0";
-  const geminiModel = process.env.GEMINI_MODEL ?? "gemini-1.0-pro";
+    (await getParameter(PARAMETER_PATHS.BEDROCK_MODEL_ID, "BEDROCK_MODEL_ID")) ??
+    "anthropic.claude-3-5-sonnet-20240620-v1:0";
+  const geminiModel =
+    (await getParameter(PARAMETER_PATHS.GEMINI_MODEL, "GEMINI_MODEL")) ??
+    "gemini-1.0-pro";
 
   const errors: Record<string, string> = {};
   const gptUserPrompt = buildUserPrompt({

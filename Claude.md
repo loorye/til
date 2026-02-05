@@ -480,7 +480,21 @@ export async function getParameter(
 
 ### Parameter Storeへの登録手順
 
-#### 1. AWS CLIでパラメータを登録
+#### 0. セットアップスクリプトの使用（推奨）
+
+最も簡単な方法は、用意されたセットアップスクリプトを使用することです：
+
+```bash
+./scripts/setup-parameter-store.sh
+```
+
+このスクリプトは対話形式で全てのパラメータを登録します：
+- 機密情報（APIキー、認証情報）→ SecureString
+- 設定値（モデル名、リージョン、モックモード）→ String
+
+#### 1. AWS CLIでパラメータを登録（手動）
+
+**機密情報（SecureString）:**
 
 ```bash
 # OpenAI API Key
@@ -521,6 +535,69 @@ aws ssm put-parameter \
   --value "FwoGZXIvYXdzEBMaDXXXXXXXXXXXXXXXXX..." \
   --type "SecureString" \
   --description "AWS Bedrock Session Token (optional)" \
+  --region us-east-1
+
+# Basic認証情報
+aws ssm put-parameter \
+  --name "/ai-workshop/auth-username" \
+  --value "admin" \
+  --type "SecureString" \
+  --description "Basic Authentication Username" \
+  --region us-east-1
+
+aws ssm put-parameter \
+  --name "/ai-workshop/auth-password" \
+  --value "your-strong-password" \
+  --type "SecureString" \
+  --description "Basic Authentication Password" \
+  --region us-east-1
+```
+
+**設定値（String）:**
+
+```bash
+# モデル設定
+aws ssm put-parameter \
+  --name "/ai-workshop/openai-model" \
+  --value "gpt-4o-mini" \
+  --type "String" \
+  --description "OpenAI Model Name" \
+  --region us-east-1
+
+aws ssm put-parameter \
+  --name "/ai-workshop/gemini-model" \
+  --value "gemini-1.0-pro" \
+  --type "String" \
+  --description "Gemini Model Name" \
+  --region us-east-1
+
+aws ssm put-parameter \
+  --name "/ai-workshop/bedrock-model-id" \
+  --value "anthropic.claude-3-5-sonnet-20240620-v1:0" \
+  --type "String" \
+  --description "Bedrock Model ID" \
+  --region us-east-1
+
+aws ssm put-parameter \
+  --name "/ai-workshop/bedrock-region" \
+  --value "us-east-1" \
+  --type "String" \
+  --description "Bedrock Region" \
+  --region us-east-1
+
+# 動作モード設定
+aws ssm put-parameter \
+  --name "/ai-workshop/mock-mode" \
+  --value "false" \
+  --type "String" \
+  --description "Mock Mode (true/false)" \
+  --region us-east-1
+
+aws ssm put-parameter \
+  --name "/ai-workshop/disable-auth" \
+  --value "false" \
+  --type "String" \
+  --description "Disable Authentication (true/false)" \
   --region us-east-1
 ```
 
@@ -820,48 +897,56 @@ const nextConfig = {
 
 **推奨アプローチ: Parameter Store + 環境変数の併用**
 
-本プロジェクトでは、APIキーなどの機密情報は**AWS Parameter Store**で管理し、設定値は環境変数で管理することを推奨：
+本プロジェクトでは、APIキーや設定値の**全て**を**AWS Parameter Store**で管理します：
 
-**Parameter Storeで管理（機密情報）:**
+**Parameter Storeで管理（機密情報 - SecureString）:**
 - OpenAI API Key: `/ai-workshop/openai-api-key`
 - Google API Key: `/ai-workshop/google-api-key`
 - Bedrock Access Key ID: `/ai-workshop/bedrock-access-key-id`
 - Bedrock Secret Access Key: `/ai-workshop/bedrock-secret-access-key`
 - Bedrock Session Token: `/ai-workshop/bedrock-session-token`（オプション）
+- Basic認証ユーザー名: `/ai-workshop/auth-username`
+- Basic認証パスワード: `/ai-workshop/auth-password`
 
-**環境変数で管理（設定値）:**
+**Parameter Storeで管理（設定値 - String）:**
+- OpenAIモデル名: `/ai-workshop/openai-model`
+- Geminiモデル名: `/ai-workshop/gemini-model`
+- Bedrockモデル ID: `/ai-workshop/bedrock-model-id`
+- Bedrockリージョン: `/ai-workshop/bedrock-region`
+- モックモード: `/ai-workshop/mock-mode`
+- 認証無効化フラグ: `/ai-workshop/disable-auth`
 
-Amplifyコンソールで以下の環境変数を設定：
+**Amplify環境変数（最小限）:**
 
-**認証設定（セキュリティ）:**
-- `AUTH_USERNAME`: Basic認証のユーザー名
-- `AUTH_PASSWORD`: Basic認証のパスワード（強力なものを設定）
-- `DISABLE_AUTH`: 認証を無効化する場合のみ`true`（本番では非推奨）
+Amplifyコンソールで以下の環境変数のみ設定：
 
-**モデル設定:**
-- `BEDROCK_REGION`: AWS Bedrockのリージョン（デフォルト: `us-east-1`）
-- `OPENAI_MODEL`: OpenAIモデル名（デフォルト: `gpt-4o-mini`）
-- `BEDROCK_MODEL_ID`: Bedrockモデル ID（デフォルト: `anthropic.claude-3-5-sonnet-20240620-v1:0`）
-- `GEMINI_MODEL`: Geminiモデル名（デフォルト: `gemini-1.0-pro`）
-- `AWS_REGION`: Parameter Storeのリージョン（デフォルト: `us-east-1`）
+**必須:**
+- `AWS_REGION`: Parameter Storeのリージョン（例: `us-east-1`）
 
-**動作モード（初回デプロイ時）:**
-- `MOCK_MODE=true`: デモモードで動作確認
-- `NEXT_PUBLIC_MOCK_MODE=true`: クライアント側でもデモモード
+**オプション（初回デプロイ時の動作確認用）:**
+- `NEXT_PUBLIC_MOCK_MODE=true`: クライアント側でモックモード表示
 
-**フォールバック用（Parameter Store未使用時のみ）:**
+**ローカル開発用の環境変数フォールバック:**
 
-Parameter Storeを使用しない場合（非推奨）、以下の環境変数をAmplifyに設定：
+Parameter Storeを使用しない場合（ローカル開発時のみ推奨）、`.env.local`ファイルに以下を設定：
 - `OPENAI_API_KEY`
 - `GOOGLE_API_KEY`
-- `BEDROCK_ACCESS_KEY_ID`（注: `AWS_`プレフィックスは予約されているため使用不可）
+- `BEDROCK_ACCESS_KEY_ID`
 - `BEDROCK_SECRET_ACCESS_KEY`
+- `AUTH_USERNAME`
+- `AUTH_PASSWORD`
+- `OPENAI_MODEL`
+- `GEMINI_MODEL`
+- `BEDROCK_MODEL_ID`
+- `BEDROCK_REGION`
+- `MOCK_MODE`
+- `DISABLE_AUTH`
 
 **注意事項:**
-- Parameter Store使用時は環境変数にAPIキーを設定する必要はない
-- 環境変数とParameter Storeの両方がある場合、環境変数が優先される（フォールバック機能）
-- 環境変数の変更後は再デプロイが必要
-- Parameter Storeの変更は5分以内にキャッシュから自動反映される（再デプロイ不要）
+- **環境変数が優先**: 環境変数とParameter Storeの両方がある場合、環境変数が優先される（フォールバック機能）
+- **Parameter Storeの利点**: 変更時に再デプロイ不要（5分以内にキャッシュから自動反映）
+- **環境変数の欠点**: 変更後は再デプロイが必要
+- **推奨構成**: 本番環境では全てParameter Storeで管理し、環境変数は最小限に
 - `NEXT_PUBLIC_`プレフィックスはクライアント側に公開される
 - Basic認証はHTTPS環境でのみ安全（Amplifyは自動的にHTTPS）
 

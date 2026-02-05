@@ -1,16 +1,29 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getParameter, PARAMETER_PATHS } from "@/lib/utils/parameter-store";
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
+  // Parameter Storeから認証設定を取得（環境変数フォールバック付き）
+  const disableAuthValue = await getParameter(
+    PARAMETER_PATHS.DISABLE_AUTH,
+    "DISABLE_AUTH"
+  );
+  const validUser =
+    (await getParameter(PARAMETER_PATHS.AUTH_USERNAME, "AUTH_USERNAME")) ||
+    "admin";
+  const validPassword =
+    (await getParameter(PARAMETER_PATHS.AUTH_PASSWORD, "AUTH_PASSWORD")) ||
+    "password";
+
   // デバッグログ（本番環境でのトラブルシューティング用）
   console.log("[auth] middleware invoked", {
     path: request.nextUrl.pathname,
-    disableAuth: process.env.DISABLE_AUTH,
+    disableAuth: disableAuthValue,
     hasAuthHeader: !!request.headers.get("authorization"),
   });
 
   // 認証が無効化されている場合はスキップ
-  if (process.env.DISABLE_AUTH === "true") {
+  if (disableAuthValue === "true") {
     console.log("[auth] authentication disabled");
     return NextResponse.next();
   }
@@ -21,9 +34,6 @@ export function middleware(request: NextRequest) {
   if (basicAuth) {
     const authValue = basicAuth.split(" ")[1];
     const [user, pwd] = atob(authValue).split(":");
-
-    const validUser = process.env.AUTH_USERNAME || "admin";
-    const validPassword = process.env.AUTH_PASSWORD || "password";
 
     console.log("[auth] authentication attempt", {
       providedUser: user,

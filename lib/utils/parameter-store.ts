@@ -152,9 +152,20 @@ export function clearCache(): void {
  * Parameter Storeの設定パス（プロジェクト全体で統一）
  */
 export const PARAMETER_PATHS = {
+  // 機密情報（SecureString）
   OPENAI_API_KEY: "/ai-workshop/openai-api-key",
   GOOGLE_API_KEY: "/ai-workshop/google-api-key",
   BEDROCK_ACCESS_KEY_ID: "/ai-workshop/bedrock-access-key-id",
   BEDROCK_SECRET_ACCESS_KEY: "/ai-workshop/bedrock-secret-access-key",
-  BEDROCK_SESSION_TOKEN: "/ai-workshop/bedrock-session-token"
+  BEDROCK_SESSION_TOKEN: "/ai-workshop/bedrock-session-token",
+  AUTH_USERNAME: "/ai-workshop/auth-username",
+  AUTH_PASSWORD: "/ai-workshop/auth-password",
+
+  // 設定値（String）
+  OPENAI_MODEL: "/ai-workshop/openai-model",
+  GEMINI_MODEL: "/ai-workshop/gemini-model",
+  BEDROCK_MODEL_ID: "/ai-workshop/bedrock-model-id",
+  BEDROCK_REGION: "/ai-workshop/bedrock-region",
+  MOCK_MODE: "/ai-workshop/mock-mode",
+  DISABLE_AUTH: "/ai-workshop/disable-auth"
 } as const;
