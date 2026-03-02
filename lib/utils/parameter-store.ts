@@ -1,7 +1,8 @@
 import {
   SSMClient,
   GetParametersCommand,
-  GetParametersCommandInput
+  GetParametersCommandInput,
+  SSMClientConfig
 } from "@aws-sdk/client-ssm";
 
 interface ParameterCache {
@@ -19,7 +20,23 @@ let ssmClient: SSMClient | null = null;
 function getSSMClient(): SSMClient {
   if (!ssmClient) {
     const region = process.env.AWS_REGION || process.env.BEDROCK_REGION || "us-east-1";
-    ssmClient = new SSMClient({ region });
+    const config: SSMClientConfig = { region };
+
+    // Amplifyではデフォルトのクレデンシャルチェーンが機能しないため、
+    // BEDROCK_* 環境変数が設定されている場合はそれを使用する
+    const accessKeyId = process.env.BEDROCK_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.BEDROCK_SECRET_ACCESS_KEY;
+    const sessionToken = process.env.BEDROCK_SESSION_TOKEN;
+
+    if (accessKeyId && secretAccessKey) {
+      config.credentials = {
+        accessKeyId,
+        secretAccessKey,
+        ...(sessionToken && { sessionToken })
+      };
+    }
+
+    ssmClient = new SSMClient(config);
   }
   return ssmClient;
 }
