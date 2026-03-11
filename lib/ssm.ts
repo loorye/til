@@ -30,7 +30,8 @@ export async function getSecret(key: string): Promise<string> {
         const k = p.Name?.replace(SSM_PREFIX, "") ?? "";
         cache[k] = p.Value ?? "";
       }
-    } catch {
+    } catch (e) {
+      console.error("[ssm] Failed to fetch parameters:", e);
       cache = {};
     }
   }
