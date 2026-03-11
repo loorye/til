@@ -11,6 +11,7 @@ import {
 import { callOpenAI } from "@/lib/providers/openai";
 import { callAnthropic } from "@/lib/providers/anthropic";
 import { callGemini } from "@/lib/providers/gemini";
+import { getSecret } from "@/lib/ssm";
 
 const MODEL_RESULT_JSON_SCHEMA = {
   type: "object",
@@ -290,9 +291,16 @@ export async function POST(request: Request) {
     return NextResponse.json(responseBody);
   }
 
-  const openaiKey = process.env.OPENAI_API_KEY;
+  const openaiKey = await getSecret("OPENAI_API_KEY");
   const bedrockRegion = process.env.BEDROCK_REGION ?? "us-east-1";
-  const geminiKey = process.env.GOOGLE_API_KEY;
+  const geminiKey = await getSecret("GOOGLE_API_KEY");
+
+  const awsAccessKeyId = await getSecret("AWS_ACCESS_KEY_ID");
+  const awsSecretAccessKey = await getSecret("AWS_SECRET_ACCESS_KEY");
+  const awsSessionToken = await getSecret("AWS_SESSION_TOKEN");
+  const bedrockCredentials = awsAccessKeyId && awsSecretAccessKey
+    ? { accessKeyId: awsAccessKeyId, secretAccessKey: awsSecretAccessKey, ...(awsSessionToken ? { sessionToken: awsSessionToken } : {}) }
+    : undefined;
 
   const openaiModel = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
   const bedrockModel =
@@ -428,7 +436,8 @@ export async function POST(request: Request) {
                 targetConfidence: input.targetConfidence,
                 retryNote: note
               }),
-              region: bedrockRegion
+              region: bedrockRegion,
+              credentials: bedrockCredentials
             }),
           parser: parseModelResult,
           retryNote,

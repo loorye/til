@@ -2,17 +2,20 @@ import { Sha256 } from "@aws-crypto/sha256-js";
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { HttpRequest } from "@aws-sdk/protocol-http";
 import { SignatureV4 } from "@aws-sdk/signature-v4";
+import type { AwsCredentialIdentity } from "@aws-sdk/types";
 
 export async function callAnthropic({
   model,
   systemPrompt,
   userPrompt,
-  region
+  region,
+  credentials
 }: {
   model: string;
   systemPrompt: string;
   userPrompt: string;
   region: string;
+  credentials?: { accessKeyId: string; secretAccessKey: string; sessionToken?: string };
 }): Promise<string> {
   const service = "bedrock";
   const host = `bedrock-runtime.${region}.amazonaws.com`;
@@ -33,8 +36,16 @@ export async function callAnthropic({
     ]
   });
 
+  const credentialProvider = credentials
+    ? async (): Promise<AwsCredentialIdentity> => ({
+        accessKeyId: credentials.accessKeyId,
+        secretAccessKey: credentials.secretAccessKey,
+        ...(credentials.sessionToken ? { sessionToken: credentials.sessionToken } : {})
+      })
+    : defaultProvider();
+
   const signer = new SignatureV4({
-    credentials: defaultProvider(),
+    credentials: credentialProvider,
     region,
     service,
     sha256: Sha256
