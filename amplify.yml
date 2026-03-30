@@ -4,6 +4,7 @@ frontend:
     preBuild:
       commands:
         - npm ci
+        - env | grep -E '^(OPENAI_|GOOGLE_|AUTH_|MOCK_|NEXT_PUBLIC_|DISABLE_|BEDROCK_|GEMINI_)' >> .env.production
     build:
       commands:
         - npm run build
