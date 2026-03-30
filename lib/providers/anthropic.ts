@@ -1,5 +1,5 @@
 import { Sha256 } from "@aws-crypto/sha256-js";
-import { defaultProvider } from "@aws-sdk/credential-provider-node";
+import { fromEnv } from "@aws-sdk/credential-provider-env";
 import { HttpRequest } from "@aws-sdk/protocol-http";
 import { SignatureV4 } from "@aws-sdk/signature-v4";
 import type { AwsCredentialIdentity } from "@aws-sdk/types";
@@ -42,7 +42,7 @@ export async function callAnthropic({
         secretAccessKey: credentials.secretAccessKey,
         ...(credentials.sessionToken ? { sessionToken: credentials.sessionToken } : {})
       })
-    : defaultProvider();
+    : fromEnv();
 
   const signer = new SignatureV4({
     credentials: credentialProvider,
