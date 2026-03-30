@@ -18,7 +18,7 @@ export async function getSecret(key: string): Promise<string> {
 
   if (!cache) {
     try {
-      const client = new SSMClient({});
+      const client = new SSMClient({ region: "ap-northeast-1" });
       const { Parameters } = await client.send(
         new GetParametersCommand({
           Names: SECRET_KEYS.map((k) => SSM_PREFIX + k),
